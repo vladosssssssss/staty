@@ -60,13 +60,17 @@ async function processSyncQueue() {
   if (syncRunning || syncQueue.length === 0) return;
   syncRunning = true;
   const task = syncQueue.shift();
+  let failed = false;
   try {
     await task();
   } catch (err) {
+    failed = true;
     toast('Не вдалося синхронізувати: ' + err.message, true);
   } finally {
     syncRunning = false;
-    if (syncQueue.length === 0) loadAll();
+    // Якщо синк провалився — НЕ перезатираємо локальні дані даними сервера,
+    // інакше ще не збережені на сервері ліди/платежі зникали б безслідно.
+    if (!failed && syncQueue.length === 0) loadAll();
     processSyncQueue();
   }
 }
@@ -78,7 +82,10 @@ function monthKey(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 function todayStr() {
-  return new Date().toISOString().substring(0, 10);
+  // Локальна дата, а не UTC: інакше з 00:00 до 03:00 за Києвом дата
+  // «з'їжджала» на вчорашню, і лід потрапляв не в свій місяць.
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 function monthLabel(key) {
   const [y, m] = key.split('-').map(Number);
@@ -336,15 +343,19 @@ function renderPayoutsTable() {
 
 function renderSettings() {
   const wrap = document.getElementById('settingsGroups');
+  // Якщо користувач зараз друкує в полях тарифів — не перерендерюємо,
+  // інакше фоновий синк стирав уведені ціни прямо під час введення.
+  const ae = document.activeElement;
+  if (ae && wrap.contains(ae) && ae.matches('input, select, textarea')) return;
   const directions = getDirections();
   wrap.innerHTML = directions.map(dir => {
     const rows = getTariffs(dir).map(s => `
       <tr data-direction="${esc(dir)}" data-tariff="${esc(s.tariff)}">
         <td class="cell-strong">${esc(s.tariff)}</td>
-        <td><input type="number" class="s-price1" value="${s.price1}"></td>
-        <td><input type="number" class="s-price2" value="${s.price2}"></td>
-        <td><input type="number" class="s-price3" value="${s.price3}"></td>
-        <td><input type="number" class="s-percent" value="${s.percent}"> %</td>
+        <td data-label="Ціна 1 (без знижки)"><input type="number" class="s-price1" value="${s.price1}"></td>
+        <td data-label="Ціна 2"><input type="number" class="s-price2" value="${s.price2}"></td>
+        <td data-label="Ціна 3"><input type="number" class="s-price3" value="${s.price3}"></td>
+        <td data-label="Комісія"><span class="pct-field"><input type="number" class="s-percent" value="${s.percent}"> %</span></td>
         <td><button class="btn btn--tiny btn--primary save-settings-row">Зберегти</button></td>
       </tr>`).join('');
     return `
@@ -472,6 +483,12 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
       clientName, nickname, direction, tariff, price,
       commissionPercent: Number(s.percent), status, comment, createdDate: date
     });
+    // Перемапуємо локальний id на серверний, щоб платежі, додані до цього ліда,
+    // поки синк тривав, не залилися «сиротами» з leadId=local-...
+    localLead.id = created.id;
+    state.payments.forEach(p => { if (p.leadId === tempId) p.leadId = created.id; });
+    if (state.activeLeadId === tempId) state.activeLeadId = created.id;
+    persistState();
     if (firstPayment > 0) {
       await api('addPayment', { leadId: created.id, amount: firstPayment, date, comment: 'Перший платіж' });
     }
@@ -554,7 +571,12 @@ document.getElementById('btnSaveLeadEdit').addEventListener('click', async () =>
   renderAll();
   openLeadDetail(id);
   toast('Зміни збережено');
-  enqueueSync(async () => { await api('updateLead', payload); openLeadDetail(id); });
+  enqueueSync(async () => {
+    // id міг змінитися (локальний → серверний), доки тривав синк створення ліда
+    if (lead) payload.id = lead.id;
+    await api('updateLead', payload);
+    openLeadDetail(payload.id);
+  });
 });
 
 document.getElementById('ldPaymentsBody').addEventListener('click', async e => {
@@ -703,3 +725,12 @@ document.querySelectorAll('.table-wrap, .settings-group, .tabs').forEach(scrollA
     scrollTimer = setTimeout(() => scrollArea.classList.remove('mobile-scrolling'), 500);
   }, { passive: true });
 });
+
+// Скролбар самої сторінки: показується лише під час прокрутки, потім зникає.
+let pageScrollTimer;
+window.addEventListener('scroll', () => {
+  if (!window.matchMedia('(max-width: 640px)').matches) return;
+  document.documentElement.classList.add('page-scrolling');
+  clearTimeout(pageScrollTimer);
+  pageScrollTimer = setTimeout(() => document.documentElement.classList.remove('page-scrolling'), 500);
+}, { passive: true });

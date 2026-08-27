@@ -520,6 +520,13 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
 @media (max-width: 640px) {
   body { font-size: 13px; }
   .app { width: 100%; padding: 0 12px 40px; overflow: hidden; }
+  /* Сторінковий скролбар: невидимий, з'являється лише під час прокрутки */
+  html { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+  html::-webkit-scrollbar { width: 4px; height: 4px; }
+  html::-webkit-scrollbar-track { background: transparent; }
+  html::-webkit-scrollbar-thumb { background: transparent; border: 0; border-radius: 4px; }
+  html.page-scrolling { scrollbar-color: var(--gold) transparent; }
+  html.page-scrolling::-webkit-scrollbar-thumb { background: var(--gold); }
   .ledger { padding-top: 14px; margin-bottom: 22px; }
   .ledger__top { display: block; padding-bottom: 12px; }
   .brand { gap: 10px; }
@@ -529,12 +536,10 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   .tabs {
     width: 100%;
     margin: 14px 0 0;
-    padding-bottom: 2px;
-    overflow-x: auto;
-    scrollbar-width: none;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-  .tabs::-webkit-scrollbar { display: none; }
-  .tab { flex: 0 0 auto; padding: 8px 12px; font-size: 12px; }
+  .tab { flex: 1 1 auto; text-align: center; padding: 8px 10px; font-size: 12px; white-space: nowrap; }
   .ledger__figures { gap: 10px; margin-top: 12px; }
   .figure-group { gap: 5px; }
   .figure-group__label { font-size: 8px; line-height: 1.2; }
@@ -555,24 +560,21 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
 
   .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .deals-table { min-width: 980px; }
-  .settings-group { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .settings-table { min-width: 700px; }
-  .table-wrap, .settings-group, .tabs {
+  .table-wrap, .tabs {
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
   }
-  .table-wrap.mobile-scrolling, .settings-group.mobile-scrolling, .tabs.mobile-scrolling {
+  .table-wrap.mobile-scrolling, .tabs.mobile-scrolling {
     scrollbar-color: var(--gold) transparent;
   }
-  .table-wrap::-webkit-scrollbar, .settings-group::-webkit-scrollbar, .tabs::-webkit-scrollbar { width: 3px; height: 3px; }
-  .table-wrap::-webkit-scrollbar-thumb, .settings-group::-webkit-scrollbar-thumb, .tabs::-webkit-scrollbar-thumb {
+  .table-wrap::-webkit-scrollbar, .tabs::-webkit-scrollbar { width: 3px; height: 3px; }
+  .table-wrap::-webkit-scrollbar-thumb, .tabs::-webkit-scrollbar-thumb {
     background: transparent;
     border: 0;
     border-radius: 3px;
   }
   .tabs.mobile-scrolling::-webkit-scrollbar { display: block; }
   .table-wrap.mobile-scrolling::-webkit-scrollbar-thumb,
-  .settings-group.mobile-scrolling::-webkit-scrollbar-thumb,
   .tabs.mobile-scrolling::-webkit-scrollbar-thumb { background: var(--gold); }
   .deals-table th, .payments-table th, .settings-table th { padding: 10px 11px; }
   .deals-table td, .payments-table td, .settings-table td { padding: 10px 11px; }
@@ -603,4 +605,52 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   input[type="text"], input[type="number"], input[type="date"], input[type="month"], select, textarea { font-size: 16px; }
   .toast { left: 12px; right: 12px; width: auto; transform: translateY(20px); text-align: center; }
   .toast.show { transform: translateY(0); }
+}
+
+/* ==========================================================================
+   SETTINGS (мобільні) — картки замість широкої таблиці, без скролу
+   ========================================================================== */
+@media (max-width: 760px) {
+  .settings-table {
+    display: block;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+  .settings-table thead { display: none; }
+  .settings-table tbody { display: block; }
+  .settings-table tr {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 12px;
+    align-items: end;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .settings-table tr:last-child { margin-bottom: 0; }
+  .settings-table td { display: block; padding: 0; border: none; }
+  .settings-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .settings-table td.cell-strong {
+    grid-column: 1 / -1;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .settings-table input { width: 100%; }
+  .pct-field { display: flex; align-items: center; gap: 6px; }
+  .pct-field input { flex: 1 1 auto; min-width: 0; }
+  .settings-table td:last-child { grid-column: 1 / -1; }
+  .settings-table td:last-child .btn { width: 100%; padding: 9px 10px; }
 }
