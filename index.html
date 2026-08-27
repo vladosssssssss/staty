@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contrabas · Облікова книга</title>
+<title>Моя стата</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -18,8 +19,8 @@
       <div class="brand">
         <span class="brand__mark">₴€</span>
         <div class="brand__text">
-          <h1>Облікова книга</h1>
-          <span>Contrabas · продажі та комісія</span>
+          <h1>Моя стата</h1>
+          <span>продажі та комісія</span>
         </div>
       </div>
 
@@ -29,10 +30,6 @@
         <button class="tab" data-tab="settings">Тарифи та ціни</button>
       </nav>
 
-      <div class="conn-status" id="connStatus">
-        <span class="dot" id="connDot"></span>
-        <span id="connText">з’єднання…</span>
-      </div>
     </div>
 
     <!-- Summary figures -->
@@ -53,7 +50,7 @@
       </div>
 
       <div class="figure-group">
-        <span class="figure-group__label">Мої гроші — комісія з тих самих лідів</span>
+        <span class="figure-group__label">Мої гроші</span>
         <div class="figure-group__row">
           <div class="figure figure--accent-green">
             <span class="figure__label">Мій дохід фактично</span>
@@ -67,7 +64,7 @@
       </div>
 
       <div class="figure-group">
-        <span class="figure-group__label">Розрахунки з тобою</span>
+        <span class="figure-group__label">Розрахунки</span>
         <div class="figure-group__row">
           <div class="figure figure--accent-red">
             <span class="figure__label">Очікується виплата</span>
@@ -130,7 +127,7 @@
   <!-- ===================== PAYOUTS TAB ===================== -->
   <main class="view" id="view-payouts">
     <div class="toolbar">
-      <h2 class="view-title">Виплати ЗП тобі від бізнесу</h2>
+      <h2 class="view-title">Розрахунки</h2>
       <button class="btn btn--primary" id="btnAddPayout">+ Внести виплату</button>
     </div>
 
@@ -156,7 +153,7 @@
     <div class="toolbar">
       <h2 class="view-title">Напрямки, тарифи, ціни та відсоток комісії</h2>
     </div>
-    <p class="hint">Відсоток закріплений за тарифом і не залежить від того, яку саме ціну (знижку) отримав клієнт. Зміни зберігаються одразу в Google Таблицю.</p>
+    <p class="hint">Відсоток закріплений за тарифом і не залежить від того, яку саме ціну (знижку) отримав клієнт.</p>
     <div id="settingsGroups"></div>
   </main>
 

@@ -5,6 +5,10 @@
    ========================================================================== */
 const BACKEND_URL = window.APP_CONFIG.BACKEND_URL;
 const UAH_RATE = window.APP_CONFIG.UAH_RATE;
+const LOCAL_STATE_KEY = 'my-stata-state-v1';
+const syncQueue = [];
+let syncRunning = false;
+let localRevision = 0;
 
 const state = {
   leads: [],
@@ -16,6 +20,56 @@ const state = {
   activeLeadId: null,
   loaded: false
 };
+
+function persistState() {
+  try {
+    localRevision += 1;
+    localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify({
+      leads: state.leads,
+      payments: state.payments,
+      payouts: state.payouts,
+      settings: state.settings
+    }));
+  } catch (err) {
+    console.warn('Не вдалося зберегти локальні дані', err);
+  }
+}
+
+function hydrateLocalState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LOCAL_STATE_KEY) || 'null');
+    if (!saved) return false;
+    state.leads = saved.leads || [];
+    state.payments = saved.payments || [];
+    state.payouts = saved.payouts || [];
+    state.settings = saved.settings || [];
+    state.loaded = true;
+    return true;
+  } catch (err) {
+    localStorage.removeItem(LOCAL_STATE_KEY);
+    return false;
+  }
+}
+
+function enqueueSync(task) {
+  syncQueue.push(task);
+  processSyncQueue();
+}
+
+async function processSyncQueue() {
+  if (syncRunning || syncQueue.length === 0) return;
+  syncRunning = true;
+  const task = syncQueue.shift();
+  try {
+    await task();
+  } catch (err) {
+    toast('Не вдалося синхронізувати: ' + err.message, true);
+  } finally {
+    syncRunning = false;
+    if (syncQueue.length === 0) loadAll();
+    processSyncQueue();
+  }
+}
 
 /* ==========================================================================
    HELPERS
@@ -69,9 +123,10 @@ async function api(action, payload) {
 }
 
 async function loadAll() {
-  setConn('loading', 'з’єднання…');
+  const revisionAtRequest = localRevision;
   try {
     const data = await api('getAll');
+    if (revisionAtRequest !== localRevision) return;
     state.leads = (data.leads || []).map(l => {
       // Захист від збоїв бекенду/старих рядків: місяць завжди рахуємо
       // з дати створення, а не з того, що прийшло з таблиці.
@@ -82,17 +137,17 @@ async function loadAll() {
     state.payouts = data.payouts || [];
     state.settings = data.settings || [];
     state.loaded = true;
-    setConn('ok', 'підключено до Google Sheets');
+    persistState();
     renderAll();
   } catch (err) {
-    setConn('error', 'немає з’єднання: ' + err.message);
-    toast('Не вдалося завантажити дані: ' + err.message, true);
+    if (!state.loaded) toast('Не вдалося завантажити дані: ' + err.message, true);
   }
 }
 
 function setConn(status, text) {
   const dot = document.getElementById('connDot');
   const label = document.getElementById('connText');
+  if (!dot || !label) return;
   dot.className = 'dot dot--' + status;
   label.textContent = text;
 }
@@ -382,7 +437,28 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
 
   const btn = document.getElementById('btnSaveLead');
   btn.disabled = true; btn.textContent = 'Збереження…';
-  try {
+  const tempId = 'local-' + Date.now();
+  const localLead = {
+    id: tempId,
+    number: Math.max(0, ...state.leads.map(l => Number(l.number) || 0)) + 1,
+    clientName, nickname, direction, tariff, price,
+    commissionPercent: Number(s.percent), status, comment,
+    createdDate: date, month: date.substring(0, 7), cancelled: false
+  };
+  state.leads.push(localLead);
+  if (firstPayment > 0) {
+    state.payments.push({
+      id: 'local-payment-' + Date.now(), leadId: tempId, amount: firstPayment,
+      date, comment: 'Перший платіж', cancelled: false
+    });
+  }
+  state.currentMonth = date.substring(0, 7);
+  persistState();
+  renderAll();
+  toast('Лід додано');
+  closeModal('modalAddLead');
+  btn.disabled = false; btn.textContent = 'Зберегти лід';
+  enqueueSync(async () => {
     const created = await api('addLead', {
       clientName, nickname, direction, tariff, price,
       commissionPercent: Number(s.percent), status, comment, createdDate: date
@@ -390,15 +466,7 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
     if (firstPayment > 0) {
       await api('addPayment', { leadId: created.id, amount: firstPayment, date, comment: 'Перший платіж' });
     }
-    toast('Лід збережено');
-    closeModal('modalAddLead');
-    state.currentMonth = date.substring(0, 7); // рахуємо місяць локально, а не з відповіді бекенду
-    await loadAll();
-  } catch (err) {
-    toast('Помилка: ' + err.message, true);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Зберегти лід';
-  }
+  });
 });
 
 /* ---- Lead detail ---- */
@@ -471,14 +539,13 @@ document.getElementById('btnSaveLeadEdit').addEventListener('click', async () =>
     comment: document.getElementById('ldComment').value.trim(),
     cancelled: document.getElementById('ldCancelled').checked
   };
-  try {
-    await api('updateLead', payload);
-    toast('Зміни збережено');
-    await loadAll();
-    openLeadDetail(id);
-  } catch (err) {
-    toast('Помилка: ' + err.message, true);
-  }
+  const lead = leadById(id);
+  if (lead) Object.assign(lead, payload);
+  persistState();
+  renderAll();
+  openLeadDetail(id);
+  toast('Зміни збережено');
+  enqueueSync(async () => { await api('updateLead', payload); openLeadDetail(id); });
 });
 
 document.getElementById('ldPaymentsBody').addEventListener('click', async e => {
@@ -487,14 +554,11 @@ document.getElementById('ldPaymentsBody').addEventListener('click', async e => {
   const id = row.getAttribute('data-id');
   const payment = state.payments.find(p => p.id === id);
   if (!payment) return;
-  try {
-    await api('updatePayment', { id, cancelled: !payment.cancelled });
-    toast(payment.cancelled ? 'Платіж відновлено' : 'Платіж скасовано');
-    await loadAll();
-    openLeadDetail(state.activeLeadId);
-  } catch (err) {
-    toast('Помилка: ' + err.message, true);
-  }
+  payment.cancelled = !payment.cancelled;
+  persistState();
+  renderAll();
+  toast(payment.cancelled ? 'Платіж скасовано' : 'Платіж відновлено');
+  enqueueSync(async () => { await api('updatePayment', { id, cancelled: payment.cancelled }); openLeadDetail(state.activeLeadId); });
 });
 
 /* ---- Add payment ---- */
@@ -509,15 +573,14 @@ document.getElementById('btnSavePayment').addEventListener('click', async () => 
   const date = document.getElementById('pDate').value || todayStr();
   const comment = document.getElementById('pComment').value.trim();
   if (amount <= 0) { toast('Вкажи суму платежу', true); return; }
-  try {
-    await api('addPayment', { leadId: state.activeLeadId, amount, date, comment });
-    toast('Платіж додано');
-    closeModal('modalAddPayment');
-    await loadAll();
-    openLeadDetail(state.activeLeadId);
-  } catch (err) {
-    toast('Помилка: ' + err.message, true);
-  }
+  const payment = { id: 'local-payment-' + Date.now(), leadId: state.activeLeadId, amount, date, comment, cancelled: false };
+  state.payments.push(payment);
+  persistState();
+  renderAll();
+  toast('Платіж додано');
+  closeModal('modalAddPayment');
+  openLeadDetail(state.activeLeadId);
+  enqueueSync(async () => { await api('addPayment', { leadId: payment.leadId, amount, date, comment }); openLeadDetail(state.activeLeadId); });
 });
 
 /* ---- Payouts ---- */
@@ -532,26 +595,28 @@ document.getElementById('btnSavePayout').addEventListener('click', async () => {
   const date = document.getElementById('oDate').value || todayStr();
   const comment = document.getElementById('oComment').value.trim();
   if (amount <= 0) { toast('Вкажи суму виплати', true); return; }
-  try {
-    await api('addPayout', { amount, date, comment });
-    toast('Виплату додано');
-    closeModal('modalAddPayout');
-    await loadAll();
-  } catch (err) {
-    toast('Помилка: ' + err.message, true);
-  }
+  const payout = { id: 'local-payout-' + Date.now(), amount, date, comment };
+  state.payouts.push(payout);
+  persistState();
+  renderAll();
+  toast('Виплату додано');
+  closeModal('modalAddPayout');
+  enqueueSync(async () => {
+    const created = await api('addPayout', { amount, date, comment });
+    payout.id = created.id;
+    persistState();
+  });
 });
 document.getElementById('payoutsBody').addEventListener('click', async e => {
   if (!e.target.classList.contains('del-payout')) return;
   const id = e.target.closest('tr').getAttribute('data-id');
   if (!confirm('Видалити цю виплату?')) return;
-  try {
-    await api('deletePayout', { id });
-    toast('Виплату видалено');
-    await loadAll();
-  } catch (err) {
-    toast('Помилка: ' + err.message, true);
-  }
+  const payout = state.payouts.find(item => item.id === id);
+  state.payouts = state.payouts.filter(p => p.id !== id);
+  persistState();
+  renderAll();
+  toast('Виплату видалено');
+  enqueueSync(async () => { await api('deletePayout', { id: payout ? payout.id : id }); });
 });
 
 /* ---- Settings ---- */
@@ -564,13 +629,12 @@ document.getElementById('settingsGroups').addEventListener('click', async e => {
   const price2 = Number(row.querySelector('.s-price2').value) || 0;
   const price3 = Number(row.querySelector('.s-price3').value) || 0;
   const percent = Number(row.querySelector('.s-percent').value) || 0;
-  try {
-    await api('updateSettings', { direction, tariff, price1, price2, price3, percent });
-    toast('Тариф оновлено');
-    await loadAll();
-  } catch (err) {
-    toast('Помилка: ' + err.message, true);
-  }
+  const setting = getSetting(direction, tariff);
+  if (setting) Object.assign(setting, { price1, price2, price3, percent });
+  persistState();
+  renderAll();
+  toast('Тариф оновлено');
+  enqueueSync(async () => { await api('updateSettings', { direction, tariff, price1, price2, price3, percent }); });
 });
 
 /* ==========================================================================
@@ -618,4 +682,5 @@ document.getElementById('searchClear').addEventListener('click', () => {
 /* ==========================================================================
    INIT
    ========================================================================== */
+if (hydrateLocalState()) renderAll();
 loadAll();
