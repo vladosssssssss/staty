@@ -457,7 +457,7 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
 
   const btn = document.getElementById('btnSaveLead');
   btn.disabled = true; btn.textContent = 'Збереження…';
-  const tempId = 'local-' + Date.now();
+  const tempId = 'local-' + Date.now() + '-' + Math.floor(Math.random() * 100000);
   const localLead = {
     id: tempId,
     number: Math.max(0, ...state.leads.map(l => Number(l.number) || 0)) + 1,
@@ -468,7 +468,7 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
   state.leads.push(localLead);
   if (firstPayment > 0) {
     state.payments.push({
-      id: 'local-payment-' + Date.now(), leadId: tempId, amount: firstPayment,
+      id: 'local-payment-' + Date.now() + '-' + Math.floor(Math.random() * 100000), leadId: tempId, amount: firstPayment,
       date, comment: 'Перший платіж', cancelled: false
     });
   }
@@ -604,7 +604,7 @@ document.getElementById('btnSavePayment').addEventListener('click', async () => 
   const date = document.getElementById('pDate').value || todayStr();
   const comment = document.getElementById('pComment').value.trim();
   if (amount <= 0) { toast('Вкажи суму платежу', true); return; }
-  const payment = { id: 'local-payment-' + Date.now(), leadId: state.activeLeadId, amount, date, comment, cancelled: false };
+  const payment = { id: 'local-payment-' + Date.now() + '-' + Math.floor(Math.random() * 100000), leadId: state.activeLeadId, amount, date, comment, cancelled: false };
   state.payments.push(payment);
   persistState();
   renderAll();
@@ -626,7 +626,7 @@ document.getElementById('btnSavePayout').addEventListener('click', async () => {
   const date = document.getElementById('oDate').value || todayStr();
   const comment = document.getElementById('oComment').value.trim();
   if (amount <= 0) { toast('Вкажи суму виплати', true); return; }
-  const payout = { id: 'local-payout-' + Date.now(), amount, date, comment };
+  const payout = { id: 'local-payout-' + Date.now() + '-' + Math.floor(Math.random() * 100000), amount, date, comment };
   state.payouts.push(payout);
   persistState();
   renderAll();

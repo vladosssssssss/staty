@@ -232,27 +232,36 @@ function formatDate_(d) {
 
 function addLead_(p) {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LEADS);
-  var id = 'L' + new Date().getTime() + Math.floor(Math.random() * 1000);
-  var number = nextLeadNumber_(sh);
-  var createdDate = p.createdDate || Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Europe/Kyiv', 'yyyy-MM-dd');
-  var month = createdDate.substring(0, 7);
-  var row = [
-    id,
-    number,
-    p.clientName || '',
-    p.nickname || '',
-    p.direction || '',
-    p.tariff || '',
-    Number(p.price) || 0,
-    Number(p.commissionPercent) || 0,
-    p.status || 'Бронь',
-    p.comment || '',
-    createdDate,
-    month,
-    false
-  ];
-  sh.appendRow(row);
-  return { id: id, number: number, createdDate: createdDate, month: month };
+  // Блокування потрібне, бо без нього два майже одночасні запити (наприклад,
+  // з двох вкладок/пристроїв) можуть прочитати той самий "останній номер"
+  // і створити два ліди з однаковим номером.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var id = 'L' + new Date().getTime() + Math.floor(Math.random() * 1000);
+    var number = nextLeadNumber_(sh);
+    var createdDate = p.createdDate || Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Europe/Kyiv', 'yyyy-MM-dd');
+    var month = createdDate.substring(0, 7);
+    var row = [
+      id,
+      number,
+      p.clientName || '',
+      p.nickname || '',
+      p.direction || '',
+      p.tariff || '',
+      Number(p.price) || 0,
+      Number(p.commissionPercent) || 0,
+      p.status || 'Бронь',
+      p.comment || '',
+      createdDate,
+      month,
+      false
+    ];
+    sh.appendRow(row);
+    return { id: id, number: number, createdDate: createdDate, month: month };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function nextLeadNumber_(sh) {
