@@ -113,10 +113,23 @@ function toast(msg, isError) {
    API
    ========================================================================== */
 async function api(action, payload) {
-  const res = await fetch(BACKEND_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action, payload: payload || {} })
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+  let res;
+  try {
+    res = await fetch(BACKEND_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action, payload: payload || {} }),
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('Таблиця не відповіла за 15 секунд');
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (!res.ok) throw new Error('Сервер відповів з помилкою ' + res.status);
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Невідома помилка сервера');
   return json.data;
@@ -140,16 +153,12 @@ async function loadAll() {
     persistState();
     renderAll();
   } catch (err) {
-    if (!state.loaded) toast('Не вдалося завантажити дані: ' + err.message, true);
+    if (!state.loaded) {
+      state.loaded = true;
+      renderAll();
+      toast('Не вдалося завантажити дані: ' + err.message, true);
+    }
   }
-}
-
-function setConn(status, text) {
-  const dot = document.getElementById('connDot');
-  const label = document.getElementById('connText');
-  if (!dot || !label) return;
-  dot.className = 'dot dot--' + status;
-  label.textContent = text;
 }
 
 /* ==========================================================================
