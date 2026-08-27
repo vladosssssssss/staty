@@ -693,3 +693,13 @@ document.getElementById('searchClear').addEventListener('click', () => {
    ========================================================================== */
 if (hydrateLocalState()) renderAll();
 loadAll();
+
+document.querySelectorAll('.table-wrap, .settings-group, .tabs').forEach(scrollArea => {
+  let scrollTimer;
+  scrollArea.addEventListener('scroll', () => {
+    if (!window.matchMedia('(max-width: 640px)').matches) return;
+    scrollArea.classList.add('mobile-scrolling');
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => scrollArea.classList.remove('mobile-scrolling'), 500);
+  }, { passive: true });
+});

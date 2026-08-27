@@ -518,10 +518,89 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   .lead-edit-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .app { padding: 0 14px 40px; }
-  .ledger__top { flex-wrap: wrap; }
-  .conn-status { margin-left: 0; order: 3; }
-  .tabs { order: 2; }
-  .modal--wide { width: 100%; }
-  .form-row--split { grid-template-columns: 1fr; }
+  body { font-size: 13px; }
+  .app { width: 100%; padding: 0 12px 40px; overflow: hidden; }
+  .ledger { padding-top: 14px; margin-bottom: 22px; }
+  .ledger__top { display: block; padding-bottom: 12px; }
+  .brand { gap: 10px; }
+  .brand__mark { padding: 7px 8px; }
+  .brand__text h1 { font-size: 18px; }
+  .brand__text span { font-size: 11px; }
+  .tabs {
+    width: 100%;
+    margin: 14px 0 0;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: 0 0 auto; padding: 8px 12px; font-size: 12px; }
+  .ledger__figures { gap: 10px; margin-top: 12px; }
+  .figure-group { gap: 5px; }
+  .figure-group__label { font-size: 8px; line-height: 1.2; }
+  .figure { min-width: 0; padding: 8px 8px; gap: 2px; }
+  .figure__label { font-size: 8px; line-height: 1.2; }
+  .figure__value { font-size: 14px; overflow-wrap: anywhere; }
+  .figure--cashflow .figure__value { font-size: 15px; }
+  .figure__sub { font-size: 8px; line-height: 1.2; }
+
+  .toolbar { align-items: stretch; gap: 9px; margin-bottom: 12px; }
+  .month-nav, .search-box, .toolbar > .btn { width: 100%; }
+  .month-nav { justify-content: space-between; }
+  .month-nav input[type="month"] { flex: 1; text-align: center; }
+  .search-box { min-width: 0; }
+  .toolbar > .btn { padding: 11px 14px; }
+  .view-title { font-size: 17px; }
+  .hint { font-size: 12px; line-height: 1.45; margin: -2px 0 14px; }
+
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .deals-table { min-width: 980px; }
+  .settings-group { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .settings-table { min-width: 700px; }
+  .table-wrap, .settings-group, .tabs {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .table-wrap.mobile-scrolling, .settings-group.mobile-scrolling, .tabs.mobile-scrolling {
+    scrollbar-color: var(--gold) transparent;
+  }
+  .table-wrap::-webkit-scrollbar, .settings-group::-webkit-scrollbar, .tabs::-webkit-scrollbar { width: 3px; height: 3px; }
+  .table-wrap::-webkit-scrollbar-thumb, .settings-group::-webkit-scrollbar-thumb, .tabs::-webkit-scrollbar-thumb {
+    background: transparent;
+    border: 0;
+    border-radius: 3px;
+  }
+  .tabs.mobile-scrolling::-webkit-scrollbar { display: block; }
+  .table-wrap.mobile-scrolling::-webkit-scrollbar-thumb,
+  .settings-group.mobile-scrolling::-webkit-scrollbar-thumb,
+  .tabs.mobile-scrolling::-webkit-scrollbar-thumb { background: var(--gold); }
+  .deals-table th, .payments-table th, .settings-table th { padding: 10px 11px; }
+  .deals-table td, .payments-table td, .settings-table td { padding: 10px 11px; }
+
+  .modal-overlay { padding: 10px; align-items: flex-start; }
+  .modal, .modal--wide, .modal--small {
+    width: 100%;
+    max-height: calc(100vh - 20px);
+    display: flex;
+    flex-direction: column;
+  }
+  .modal__head { padding: 14px 15px; }
+  .modal__body { padding: 15px; max-height: none; flex: 1 1 auto; min-height: 0; }
+  .modal__foot { padding: 12px 15px; flex-wrap: wrap; }
+  .modal__foot .btn { flex: 1 1 130px; }
+  .modal__foot--inline { display: flex; align-items: flex-start; }
+  .modal__foot--inline .checkbox-row { flex: 1 1 100%; margin: 0 0 4px; }
+  .form-row--split { grid-template-columns: 1fr; gap: 0; }
+  .lead-edit-grid { gap: 0; }
+  .lead-summary { grid-template-columns: repeat(2, 1fr); margin-bottom: 14px; }
+  .mini-fig { padding: 9px 10px; }
+  .mini-fig span { font-size: 9px; }
+  .mini-fig b { font-size: 12px; overflow-wrap: anywhere; }
+  .payments-head { align-items: stretch; flex-wrap: wrap; gap: 8px; }
+  .payments-head h4 { width: 100%; }
+  .payments-head .btn { width: 100%; }
+  .payments-table { min-width: 560px; }
+  input[type="text"], input[type="number"], input[type="date"], input[type="month"], select, textarea { font-size: 16px; }
+  .toast { left: 12px; right: 12px; width: auto; transform: translateY(20px); text-align: center; }
+  .toast.show { transform: translateY(0); }
 }
