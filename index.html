@@ -7,13 +7,11 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
 
 <div class="app">
-
-  <!-- ===================== HEADER / LEDGER STRIP ===================== -->
   <header class="ledger">
     <div class="ledger__top">
       <div class="brand">
@@ -23,18 +21,14 @@
           <span>продажі та комісія</span>
         </div>
       </div>
-
       <nav class="tabs" id="tabs">
         <button class="tab active" data-tab="deals">Ліди</button>
         <button class="tab" data-tab="payouts">Виплати ЗП</button>
         <button class="tab" data-tab="settings">Тарифи та ціни</button>
       </nav>
-
     </div>
 
-    <!-- Summary figures -->
     <div class="ledger__figures" id="figures">
-
       <div class="figure-group">
         <span class="figure-group__label">Гроші клієнтів — тарифи лідів обраного місяця</span>
         <div class="figure-group__row">
@@ -55,10 +49,12 @@
           <div class="figure figure--accent-green">
             <span class="figure__label">Мій дохід фактично</span>
             <span class="figure__value" id="figMyFact">0 €</span>
+            <span class="figure__sub" id="figMyFactUAH">0 ₴</span>
           </div>
           <div class="figure figure--accent-amber">
             <span class="figure__label">Мій дохід потенційно (повна сума)</span>
             <span class="figure__value" id="figMyPotential">0 €</span>
+            <span class="figure__sub" id="figMyPotentialUAH">0 ₴</span>
           </div>
         </div>
       </div>
@@ -77,13 +73,10 @@
           </div>
         </div>
       </div>
-
     </div>
   </header>
 
-  <!-- ===================== DEALS TAB ===================== -->
   <main class="view active" id="view-deals">
-
     <div class="toolbar">
       <div class="month-nav">
         <button class="icon-btn" id="monthPrev" title="Попередній місяць">‹</button>
@@ -91,12 +84,10 @@
         <button class="icon-btn" id="monthNext" title="Наступний місяць">›</button>
         <button class="link-btn" id="monthToday">сьогодні</button>
       </div>
-
       <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Пошук ліда за ім’ям, ніком або номером — по всіх місяцях…">
+        <input type="text" id="searchInput" placeholder="Пошук ліда за ім’ям, ніком або номером…">
         <button class="link-btn" id="searchClear" hidden>✕</button>
       </div>
-
       <button class="btn btn--primary" id="btnAddLead">+ Новий лід</button>
     </div>
 
@@ -124,22 +115,15 @@
     </div>
   </main>
 
-  <!-- ===================== PAYOUTS TAB ===================== -->
   <main class="view" id="view-payouts">
     <div class="toolbar">
       <h2 class="view-title">Розрахунки</h2>
       <button class="btn btn--primary" id="btnAddPayout">+ Внести виплату</button>
     </div>
-
     <div class="table-wrap">
       <table class="deals-table" id="payoutsTable">
         <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Сума</th>
-            <th>Коментар</th>
-            <th></th>
-          </tr>
+          <tr><th>Дата</th><th>Сума</th><th>Коментар</th><th></th></tr>
         </thead>
         <tbody id="payoutsBody">
           <tr><td colspan="4" class="empty-row">Завантаження…</td></tr>
@@ -148,17 +132,14 @@
     </div>
   </main>
 
-  <!-- ===================== SETTINGS TAB ===================== -->
   <main class="view" id="view-settings">
     <div class="toolbar">
       <h2 class="view-title">Напрямки, тарифи, ціни та відсоток комісії</h2>
     </div>
     <div id="settingsGroups"></div>
   </main>
-
 </div>
 
-<!-- ===================== MODAL: ADD LEAD ===================== -->
 <div class="modal-overlay" id="modalAddLead">
   <div class="modal">
     <div class="modal__head">
@@ -174,27 +155,16 @@
         <label>Нік у Telegram</label>
         <input type="text" id="fNickname" placeholder="@nickname">
       </div>
-
       <div class="form-row form-row--split">
-        <div>
-          <label>Напрямок</label>
-          <select id="fDirection"></select>
-        </div>
-        <div>
-          <label>Тариф</label>
-          <select id="fTariff"></select>
-        </div>
+        <div><label>Напрямок</label><select id="fDirection"></select></div>
+        <div><label>Тариф</label><select id="fTariff"></select></div>
       </div>
-
       <div class="form-row">
-        <label>Ціна тарифу <span class="muted">(комісія прив’язана до тарифу і не зміниться)</span></label>
+        <label>Ціна тарифу</label>
         <div class="price-options" id="fPriceOptions"></div>
-        <label class="checkbox-row">
-          <input type="checkbox" id="fCustomPriceToggle"> інша сума (напр. власна знижка)
-        </label>
+        <label class="checkbox-row"><input type="checkbox" id="fCustomPriceToggle"> інша сума</label>
         <input type="number" id="fCustomPrice" placeholder="Своя сума, €" hidden>
       </div>
-
       <div class="form-row form-row--split">
         <div>
           <label>Тип оплати зараз</label>
@@ -204,22 +174,14 @@
             <option value="Оплачено повністю">Повна оплата</option>
           </select>
         </div>
-        <div>
-          <label>Сума першого платежу, €</label>
-          <input type="number" id="fFirstPayment" placeholder="0" value="0">
-        </div>
+        <div><label>Сума першого платежу, €</label><input type="number" id="fFirstPayment" placeholder="0" value="0"></div>
       </div>
-
       <div class="form-row form-row--split">
-        <div>
-          <label>Дата</label>
-          <input type="date" id="fDate">
-        </div>
+        <div><label>Дата</label><input type="date" id="fDate"></div>
       </div>
-
       <div class="form-row">
         <label>Коментар</label>
-        <textarea id="fComment" rows="2" placeholder="Будь-які нотатки по ліду"></textarea>
+        <textarea id="fComment" rows="2"></textarea>
       </div>
     </div>
     <div class="modal__foot">
@@ -229,7 +191,6 @@
   </div>
 </div>
 
-<!-- ===================== MODAL: LEAD DETAIL ===================== -->
 <div class="modal-overlay" id="modalLead">
   <div class="modal modal--wide">
     <div class="modal__head">
@@ -237,22 +198,16 @@
       <button class="icon-btn" data-close-modal="modalLead">✕</button>
     </div>
     <div class="modal__body">
-
-      <div class="lead-summary" id="ldSummary"></div>
-
+      
+      <!-- Стата ліда по центру -->
+      <div class="lead-summary-wrap">
+        <div class="lead-summary" id="ldSummary"></div>
+      </div>
+      
       <div class="lead-edit-grid">
-        <div class="form-row">
-          <label>Ім’я клієнта</label>
-          <input type="text" id="ldClientName">
-        </div>
-        <div class="form-row">
-          <label>Нік у Telegram</label>
-          <input type="text" id="ldNickname">
-        </div>
-        <div class="form-row">
-          <label>Ціна тарифу, €</label>
-          <input type="number" id="ldPrice">
-        </div>
+        <div class="form-row"><label>Ім’я клієнта</label><input type="text" id="ldClientName"></div>
+        <div class="form-row"><label>Нік у Telegram</label><input type="text" id="ldNickname"></div>
+        <div class="form-row"><label>Ціна тарифу, €</label><input type="number" id="ldPrice"></div>
         <div class="form-row">
           <label>Статус</label>
           <select id="ldStatus">
@@ -262,35 +217,31 @@
           </select>
         </div>
       </div>
-      <div class="form-row">
-        <label>Коментар</label>
-        <textarea id="ldComment" rows="2"></textarea>
-      </div>
+      <div class="form-row"><label>Коментар</label><textarea id="ldComment" rows="2"></textarea></div>
+      
       <div class="modal__foot modal__foot--inline">
-        <label class="checkbox-row">
-          <input type="checkbox" id="ldCancelled"> угода скасована (не враховувати потенціал)
-        </label>
-        <button class="btn btn--small" id="btnSaveLeadEdit">Зберегти зміни</button>
+        <label class="checkbox-row"><input type="checkbox" id="ldCancelled"> угода скасована</label>
+        <div class="modal-actions-group">
+          <button class="btn btn--small btn--danger" id="btnDeleteLead">Видалити лід</button>
+          <button class="btn btn--small btn--primary" id="btnSaveLeadEdit">Зберегти зміни</button>
+        </div>
       </div>
-
+      
       <hr class="rule">
-
       <div class="payments-head">
         <h4>Платежі по ліду</h4>
         <button class="btn btn--small btn--primary" id="btnAddPayment">+ Додати платіж</button>
       </div>
-      <table class="payments-table">
-        <thead>
-          <tr><th>Дата</th><th>Сума</th><th>Коментар</th><th>Статус</th><th></th></tr>
-        </thead>
-        <tbody id="ldPaymentsBody"></tbody>
-      </table>
-
+      <div class="payments-table-wrap">
+        <table class="payments-table">
+          <thead><tr><th>Дата</th><th>Сума</th><th>Коментар</th><th>Статус</th><th></th></tr></thead>
+          <tbody id="ldPaymentsBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- ===================== MODAL: ADD PAYMENT ===================== -->
 <div class="modal-overlay" id="modalAddPayment">
   <div class="modal modal--small">
     <div class="modal__head">
@@ -298,18 +249,9 @@
       <button class="icon-btn" data-close-modal="modalAddPayment">✕</button>
     </div>
     <div class="modal__body">
-      <div class="form-row">
-        <label>Сума, €</label>
-        <input type="number" id="pAmount" placeholder="0">
-      </div>
-      <div class="form-row">
-        <label>Дата</label>
-        <input type="date" id="pDate">
-      </div>
-      <div class="form-row">
-        <label>Коментар</label>
-        <input type="text" id="pComment" placeholder="напр. 2-й платіж з 3">
-      </div>
+      <div class="form-row"><label>Сума, €</label><input type="number" id="pAmount" placeholder="0"></div>
+      <div class="form-row"><label>Дата</label><input type="date" id="pDate"></div>
+      <div class="form-row"><label>Коментар</label><input type="text" id="pComment"></div>
     </div>
     <div class="modal__foot">
       <button class="btn" data-close-modal="modalAddPayment">Скасувати</button>
@@ -318,7 +260,6 @@
   </div>
 </div>
 
-<!-- ===================== MODAL: ADD PAYOUT ===================== -->
 <div class="modal-overlay" id="modalAddPayout">
   <div class="modal modal--small">
     <div class="modal__head">
@@ -326,18 +267,9 @@
       <button class="icon-btn" data-close-modal="modalAddPayout">✕</button>
     </div>
     <div class="modal__body">
-      <div class="form-row">
-        <label>Сума, €</label>
-        <input type="number" id="oAmount" placeholder="0">
-      </div>
-      <div class="form-row">
-        <label>Дата</label>
-        <input type="date" id="oDate">
-      </div>
-      <div class="form-row">
-        <label>Коментар</label>
-        <input type="text" id="oComment" placeholder="напр. аванс за серпень">
-      </div>
+      <div class="form-row"><label>Сума, €</label><input type="number" id="oAmount" placeholder="0"></div>
+      <div class="form-row"><label>Дата</label><input type="date" id="oDate"></div>
+      <div class="form-row"><label>Коментар</label><input type="text" id="oComment"></div>
     </div>
     <div class="modal__foot">
       <button class="btn" data-close-modal="modalAddPayout">Скасувати</button>
@@ -348,7 +280,12 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="global-loader" id="globalLoader">
+  <div class="spinner"></div>
+  <p>Збереження даних...</p>
+</div>
+
 <script src="config.js"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
