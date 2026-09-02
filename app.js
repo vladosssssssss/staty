@@ -93,17 +93,42 @@ function leadById(id) { return state.leads.find(l => l.id === id); }
 
 function computeDashboard() {
   const monthLeads = state.leads.filter(l => l.month === state.currentMonth);
-  const cashPayments = state.payments.filter(p => !p.cancelled && (p.date || '').substring(0, 7) === state.currentMonth);
-  const cashTotal = cashPayments.reduce((s, p) => s + p.amount, 0);
-  const cashCommissionEUR = cashPayments.reduce((s, p) => { const lead = leadById(p.leadId); return s + p.amount * (lead ? (lead.commissionPercent / 100) : 0); }, 0);
   
+  const clientPaidFact = monthLeads.reduce((s, l) => s + leadPaidTotal(l.id), 0);
+  const clientPotentialFull = state.leads.reduce((s, l) => s + leadRemaining(l), 0); // Загальний борг клієнтів
+  
+  const myFact = monthLeads.reduce((s, l) => s + leadCommissionFact(l), 0);
+  
+  const myPotentialMonth = monthLeads.reduce((s, l) => s + leadCommissionPotential(l), 0); // Потенціал за лідами цього місяця
+  const myPotentialFull = state.leads.reduce((s, l) => s + leadCommissionPotential(l), 0); // Потенціал зі всіх боргів
+  
+  const expectedPayout = state.leads.reduce((s, l) => s + leadCommissionFact(l), 0) - state.payouts.reduce((s, p) => s + p.amount, 0);
+
+  // Формула для Прогнозу доходу за поточний місяць
+  const today = new Date();
+  const [selYear, selMonth] = state.currentMonth.split('-').map(Number);
+  let daysPassed = 1;
+  let daysInMonth = new Date(selYear, selMonth, 0).getDate(); // отримуємо кількість днів в обраному місяці
+
+  // Перевірка чи обраний місяць є поточним реальним місяцем
+  if (today.getFullYear() === selYear && (today.getMonth() + 1) === selMonth) {
+    daysPassed = today.getDate(); // пройшло днів
+  } else if (selYear < today.getFullYear() || (selYear === today.getFullYear() && selMonth < (today.getMonth() + 1))) {
+    daysPassed = daysInMonth; // якщо місяць вже минув, то пройшли всі дні (прогноз = фактична сума)
+  } else {
+    daysPassed = 1; // для майбутніх місяців
+  }
+  
+  const forecastEUR = (myFact / daysPassed) * daysInMonth;
+
   return {
-    clientPaidFact: monthLeads.reduce((s, l) => s + leadPaidTotal(l.id), 0),
-    clientPotentialFull: state.leads.reduce((s, l) => s + leadRemaining(l), 0),
-    myFact: monthLeads.reduce((s, l) => s + leadCommissionFact(l), 0),
-    myPotentialFull: state.leads.reduce((s, l) => s + leadCommissionPotential(l), 0),
-    cashTotal, cashCommissionEUR, cashCommissionUAH: cashCommissionEUR * UAH_RATE,
-    expectedPayout: state.leads.reduce((s, l) => s + leadCommissionFact(l), 0) - state.payouts.reduce((s, p) => s + p.amount, 0)
+    clientPaidFact,
+    clientPotentialFull,
+    myFact,
+    myPotentialMonth,
+    myPotentialFull,
+    expectedPayout,
+    forecastEUR
   };
 }
 
@@ -111,17 +136,21 @@ function renderAll() { renderDashboard(); renderDealsTable(); renderPayoutsTable
 
 function renderDashboard() {
   const d = computeDashboard();
+  // Група 1
   document.getElementById('figClientPaid').textContent = fmtEUR(d.clientPaidFact); 
-  document.getElementById('figClientPotential').textContent = fmtEUR(d.clientPotentialFull);
   document.getElementById('figMyFact').textContent = fmtEUR(d.myFact); 
   document.getElementById('figMyFactUAH').textContent = fmtUAH(d.myFact * UAH_RATE);
-  document.getElementById('figMyPotential').textContent = fmtEUR(d.myPotentialFull); 
-  document.getElementById('figMyPotentialUAH').textContent = fmtUAH(d.myPotentialFull * UAH_RATE);
-  document.getElementById('figMonthTotal').textContent = fmtEUR(d.cashTotal); 
-  document.getElementById('figMonthCommissionEUR').textContent = fmtEUR(d.cashCommissionEUR);
-  document.getElementById('figMonthCommissionUAH').textContent = fmtUAH(d.cashCommissionUAH); 
+  
+  // Група 2
+  document.getElementById('figClientPotential').textContent = fmtEUR(d.clientPotentialFull);
+  document.getElementById('figMyPotential').innerHTML = `${fmtEUR(d.myPotentialMonth)} <span style="color:var(--text-dim)">/</span> ${fmtEUR(d.myPotentialFull)}`;
+  document.getElementById('figMyPotentialUAH').innerHTML = `${fmtUAH(d.myPotentialMonth * UAH_RATE)} <span style="color:var(--text-dim)">/</span> ${fmtUAH(d.myPotentialFull * UAH_RATE)}`;
+  
+  // Група 3
   document.getElementById('figOwed').textContent = fmtEUR(d.expectedPayout);
   document.getElementById('figOwedUAH').textContent = fmtUAH(d.expectedPayout * UAH_RATE);
+  document.getElementById('figForecast').textContent = fmtEUR(d.forecastEUR);
+  document.getElementById('figForecastUAH').textContent = fmtUAH(d.forecastEUR * UAH_RATE);
 }
 
 function renderDealsTable() {
