@@ -7,11 +7,11 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=10">
+<link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
 
-<div class="app">
+<div class="app" id="appContainer">
   <header class="ledger">
     <div class="ledger__top">
       <div class="brand">
@@ -30,14 +30,14 @@
 
     <div class="ledger__figures" id="figures">
       <div class="figure-group">
-        <span class="figure-group__label">Гроші клієнтів — тарифи лідів обраного місяця</span>
+        <span class="figure-group__label">Гроші клієнтів</span>
         <div class="figure-group__row">
           <div class="figure figure--accent-blue">
-            <span class="figure__label">Клієнти сплатили фактично</span>
+            <span class="figure__label">Сплачено (ліди місяця)</span>
             <span class="figure__value" id="figClientPaid">0 €</span>
           </div>
           <div class="figure figure--accent-blue">
-            <span class="figure__label">Мають сплатити повністю (тариф)</span>
+            <span class="figure__label">Загальний борг (всі місяці)</span>
             <span class="figure__value" id="figClientPotential">0 €</span>
           </div>
         </div>
@@ -47,12 +47,12 @@
         <span class="figure-group__label">Мої гроші</span>
         <div class="figure-group__row">
           <div class="figure figure--accent-green">
-            <span class="figure__label">Мій дохід фактично</span>
+            <span class="figure__label">Мій факт (ліди місяця)</span>
             <span class="figure__value" id="figMyFact">0 €</span>
             <span class="figure__sub" id="figMyFactUAH">0 ₴</span>
           </div>
           <div class="figure figure--accent-amber">
-            <span class="figure__label">Мій дохід потенційно (повна сума)</span>
+            <span class="figure__label">Очікую з боргів (всі місяці)</span>
             <span class="figure__value" id="figMyPotential">0 €</span>
             <span class="figure__sub" id="figMyPotentialUAH">0 ₴</span>
           </div>
@@ -65,6 +65,7 @@
           <div class="figure figure--accent-red">
             <span class="figure__label">Очікується виплата</span>
             <span class="figure__value" id="figOwed">0 €</span>
+            <span class="figure__sub" id="figOwedUAH">0 ₴</span>
           </div>
           <div class="figure figure--cashflow">
             <span class="figure__label">Внесено мені в касу за місяць</span>
@@ -198,8 +199,6 @@
       <button class="icon-btn" data-close-modal="modalLead">✕</button>
     </div>
     <div class="modal__body">
-      
-      <!-- Стата ліда по центру -->
       <div class="lead-summary-wrap">
         <div class="lead-summary" id="ldSummary"></div>
       </div>
@@ -249,9 +248,14 @@
       <button class="icon-btn" data-close-modal="modalAddPayment">✕</button>
     </div>
     <div class="modal__body">
-      <div class="form-row"><label>Сума, €</label><input type="number" id="pAmount" placeholder="0"></div>
-      <div class="form-row"><label>Дата</label><input type="date" id="pDate"></div>
-      <div class="form-row"><label>Коментар</label><input type="text" id="pComment"></div>
+      <div class="form-row form-row--split">
+        <div><label>Сума, €</label><input type="number" id="pAmount" placeholder="0"></div>
+        <div><label>Дата</label><input type="date" id="pDate"></div>
+      </div>
+      <div class="form-row">
+        <label>Коментар</label>
+        <input type="text" id="pComment">
+      </div>
     </div>
     <div class="modal__foot">
       <button class="btn" data-close-modal="modalAddPayment">Скасувати</button>
@@ -267,9 +271,14 @@
       <button class="icon-btn" data-close-modal="modalAddPayout">✕</button>
     </div>
     <div class="modal__body">
-      <div class="form-row"><label>Сума, €</label><input type="number" id="oAmount" placeholder="0"></div>
-      <div class="form-row"><label>Дата</label><input type="date" id="oDate"></div>
-      <div class="form-row"><label>Коментар</label><input type="text" id="oComment"></div>
+      <div class="form-row form-row--split">
+        <div><label>Сума, €</label><input type="number" id="oAmount" placeholder="0"></div>
+        <div><label>Дата</label><input type="date" id="oDate"></div>
+      </div>
+      <div class="form-row">
+        <label>Коментар</label>
+        <input type="text" id="oComment">
+      </div>
     </div>
     <div class="modal__foot">
       <button class="btn" data-close-modal="modalAddPayout">Скасувати</button>
@@ -286,6 +295,6 @@
 </div>
 
 <script src="config.js"></script>
-<script src="app.js?v=10"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

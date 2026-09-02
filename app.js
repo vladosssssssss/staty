@@ -99,9 +99,9 @@ function computeDashboard() {
   
   return {
     clientPaidFact: monthLeads.reduce((s, l) => s + leadPaidTotal(l.id), 0),
-    clientPotentialFull: monthLeads.reduce((s, l) => s + (l.cancelled ? leadPaidTotal(l.id) : l.price), 0),
+    clientPotentialFull: state.leads.reduce((s, l) => s + leadRemaining(l), 0),
     myFact: monthLeads.reduce((s, l) => s + leadCommissionFact(l), 0),
-    myPotentialFull: monthLeads.reduce((s, l) => s + (l.cancelled ? leadCommissionFact(l) : l.price * (l.commissionPercent / 100)), 0),
+    myPotentialFull: state.leads.reduce((s, l) => s + leadCommissionPotential(l), 0),
     cashTotal, cashCommissionEUR, cashCommissionUAH: cashCommissionEUR * UAH_RATE,
     expectedPayout: state.leads.reduce((s, l) => s + leadCommissionFact(l), 0) - state.payouts.reduce((s, p) => s + p.amount, 0)
   };
@@ -111,11 +111,17 @@ function renderAll() { renderDashboard(); renderDealsTable(); renderPayoutsTable
 
 function renderDashboard() {
   const d = computeDashboard();
-  document.getElementById('figClientPaid').textContent = fmtEUR(d.clientPaidFact); document.getElementById('figClientPotential').textContent = fmtEUR(d.clientPotentialFull);
-  document.getElementById('figMyFact').textContent = fmtEUR(d.myFact); document.getElementById('figMyFactUAH').textContent = fmtUAH(d.myFact * UAH_RATE);
-  document.getElementById('figMyPotential').textContent = fmtEUR(d.myPotentialFull); document.getElementById('figMyPotentialUAH').textContent = fmtUAH(d.myPotentialFull * UAH_RATE);
-  document.getElementById('figMonthTotal').textContent = fmtEUR(d.cashTotal); document.getElementById('figMonthCommissionEUR').textContent = fmtEUR(d.cashCommissionEUR);
-  document.getElementById('figMonthCommissionUAH').textContent = fmtUAH(d.cashCommissionUAH); document.getElementById('figOwed').textContent = fmtEUR(d.expectedPayout);
+  document.getElementById('figClientPaid').textContent = fmtEUR(d.clientPaidFact); 
+  document.getElementById('figClientPotential').textContent = fmtEUR(d.clientPotentialFull);
+  document.getElementById('figMyFact').textContent = fmtEUR(d.myFact); 
+  document.getElementById('figMyFactUAH').textContent = fmtUAH(d.myFact * UAH_RATE);
+  document.getElementById('figMyPotential').textContent = fmtEUR(d.myPotentialFull); 
+  document.getElementById('figMyPotentialUAH').textContent = fmtUAH(d.myPotentialFull * UAH_RATE);
+  document.getElementById('figMonthTotal').textContent = fmtEUR(d.cashTotal); 
+  document.getElementById('figMonthCommissionEUR').textContent = fmtEUR(d.cashCommissionEUR);
+  document.getElementById('figMonthCommissionUAH').textContent = fmtUAH(d.cashCommissionUAH); 
+  document.getElementById('figOwed').textContent = fmtEUR(d.expectedPayout);
+  document.getElementById('figOwedUAH').textContent = fmtUAH(d.expectedPayout * UAH_RATE);
 }
 
 function renderDealsTable() {
