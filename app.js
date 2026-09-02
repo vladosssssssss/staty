@@ -79,7 +79,7 @@ async function loadAll() {
   } catch (err) { if (!state.loaded) { state.loaded = true; renderAll(); toast('Помилка: ' + err.message, true); } } finally { hideLoader(); }
 }
 
-function getDirections() { const seen = []; state.settings.forEach(s => { if (!seen.includes(s.direction)) push(s.direction); }); return seen; }
+function getDirections() { const seen = []; state.settings.forEach(s => { if (!seen.includes(s.direction)) seen.push(s.direction); }); return seen; }
 function getTariffs(direction) { return state.settings.filter(s => s.direction === direction).sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)); }
 function getSetting(direction, tariff) { return state.settings.find(s => s.direction === direction && s.tariff === tariff); }
 function leadPayments(leadId) { return state.payments.filter(p => p.leadId === leadId); }
@@ -117,7 +117,6 @@ function computeDashboard() {
     daysPassed = 1; 
   }
   
-  // Прогноз будується на потенціалі (Факт + Очікування з угод поточного місяця)
   const forecastEUR = ((myFact + myPotentialMonth) / daysPassed) * daysInMonth;
 
   return {
@@ -220,6 +219,7 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
 });
 
 document.getElementById('dealsBody').addEventListener('click', e => { if (e.target.classList.contains('open-lead')) openLeadDetail(e.target.closest('tr').getAttribute('data-id')); });
+
 function openLeadDetail(id) {
   const lead = leadById(id); if (!lead) return; state.activeLeadId = id;
   document.getElementById('ldTitle').textContent = `#${lead.number} · ${lead.clientName}${lead.nickname ? ' (' + lead.nickname + ')' : ''}`;
@@ -230,14 +230,38 @@ function openLeadDetail(id) {
 }
 
 function renderLeadDetailSummary(lead) {
-  const factEUR = leadCommissionFact(lead); const payments = leadPayments(lead.id).filter(p => !p.cancelled).sort((a, b) => a.date.localeCompare(b.date)); const firstPayDate = payments.length > 0 ? payments[0].date : '—';
-  const tariffHTML = `<div style="font-weight:400; color:var(--text-muted); font-family:var(--font-body); line-height:1.3; text-align:center; white-space:normal; width:100%; word-break:break-word;">${esc(lead.direction)}<br><span style="color:var(--text); font-weight:700;">${esc(lead.tariff)}</span></div>`;
+  const factEUR = leadCommissionFact(lead); 
+  const fullCommissionEUR = lead.price * (lead.commissionPercent / 100);
+  const paid = leadPaidTotal(lead.id);
+
+  // Тариф + знизу відсоток комісії
+  const tariffHTML = `<div style="font-weight:400; color:var(--text-muted); font-family:var(--font-body); line-height:1.3; text-align:center; white-space:normal; width:100%; word-break:break-word;">${esc(lead.direction)}<br><span style="color:var(--text); font-weight:700;">${esc(lead.tariff)}</span> <span style="font-size: 10px; color: var(--gold);">(${lead.commissionPercent}%)</span></div>`;
 
   document.getElementById('ldSummary').innerHTML = `
-    <div class="mini-fig"><span>Тариф</span>${tariffHTML}</div><div class="mini-fig"><span>Ціна</span><b class="mono">${fmtEUR(lead.price)}</b></div>
-    <div class="mini-fig"><span>Сплачено</span><b class="mono positive">${fmtEUR(leadPaidTotal(lead.id))}</b></div><div class="mini-fig"><span>Залишок</span><b class="mono negative">${fmtEUR(leadRemaining(lead))}</b></div>
-    <div class="mini-fig"><span>Комісія</span><b class="mono">${lead.commissionPercent}%</b></div><div class="mini-fig"><span>Мій факт</span><b class="mono accent">${fmtEUR(factEUR)}<div style="font-size: 10px; color: var(--text-muted); font-weight: 500; margin-top: 2px;">${fmtUAH(factEUR * UAH_RATE)}</div></b></div>
-    <div class="mini-fig"><span>Потенціал</span><b class="mono">${fmtEUR(leadCommissionPotential(lead))}</b></div><div class="mini-fig"><span>Перша оплата</span><b class="mono">${esc(firstPayDate)}</b></div>`;
+    <div class="mini-fig">
+      <span>Тариф</span>
+      ${tariffHTML}
+    </div>
+    <div class="mini-fig">
+      <span>Ціна</span>
+      <b class="mono">${fmtEUR(lead.price)}
+        <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 500; margin-top: 4px;">
+          Мої: <span style="color:var(--gold)">${fmtEUR(fullCommissionEUR)}</span> = <span style="color:var(--gold)">${fmtUAH(fullCommissionEUR * UAH_RATE)}</span>
+        </div>
+      </b>
+    </div>
+    <div class="mini-fig">
+      <span>Сплачено</span>
+      <b class="mono positive">${fmtEUR(paid)}
+        <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 500; margin-top: 4px;">
+          Факт: <span style="color:var(--gold)">${fmtEUR(factEUR)}</span> = <span style="color:var(--gold)">${fmtUAH(factEUR * UAH_RATE)}</span>
+        </div>
+      </b>
+    </div>
+    <div class="mini-fig">
+      <span>Залишок</span>
+      <b class="mono negative">${fmtEUR(leadRemaining(lead))}</b>
+    </div>`;
 }
 
 function renderLeadPayments(lead) {
