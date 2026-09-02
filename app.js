@@ -234,7 +234,6 @@ function renderLeadDetailSummary(lead) {
   const fullCommissionEUR = lead.price * (lead.commissionPercent / 100);
   const paid = leadPaidTotal(lead.id);
 
-  // Тариф + знизу відсоток комісії
   const tariffHTML = `<div style="font-weight:400; color:var(--text-muted); font-family:var(--font-body); line-height:1.3; text-align:center; white-space:normal; width:100%; word-break:break-word;">${esc(lead.direction)}<br><span style="color:var(--text); font-weight:700;">${esc(lead.tariff)}</span> <span style="font-size: 10px; color: var(--gold);">(${lead.commissionPercent}%)</span></div>`;
 
   document.getElementById('ldSummary').innerHTML = `
