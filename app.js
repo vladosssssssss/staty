@@ -117,7 +117,10 @@ function computeDashboard() {
     daysPassed = 1; 
   }
   
+  // Прогноз за поточний місяць
   const forecastEUR = ((myFact + myPotentialMonth) / daysPassed) * daysInMonth;
+  // Загальний заробіток (факт + потенціал поточного місяця)
+  const myTotalMonth = myFact + myPotentialMonth;
 
   return {
     clientPaidFact,
@@ -126,7 +129,8 @@ function computeDashboard() {
     myPotentialMonth,
     myPotentialFull,
     expectedPayout,
-    forecastEUR
+    forecastEUR,
+    myTotalMonth
   };
 }
 
@@ -144,8 +148,9 @@ function renderDashboard() {
   
   document.getElementById('figOwed').textContent = fmtEUR(d.expectedPayout);
   document.getElementById('figOwedUAH').textContent = fmtUAH(d.expectedPayout * UAH_RATE);
-  document.getElementById('figForecast').textContent = fmtEUR(d.forecastEUR);
-  document.getElementById('figForecastUAH').textContent = fmtUAH(d.forecastEUR * UAH_RATE);
+  
+  document.getElementById('figForecast').innerHTML = `${fmtEUR(d.forecastEUR)} <span style="color:var(--text-dim)">/</span> ${fmtEUR(d.myTotalMonth)}`;
+  document.getElementById('figForecastUAH').innerHTML = `${fmtUAH(d.forecastEUR * UAH_RATE)} <span style="color:var(--text-dim)">/</span> ${fmtUAH(d.myTotalMonth * UAH_RATE)}`;
 }
 
 function renderDealsTable() {
