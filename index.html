@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
 
@@ -29,27 +29,29 @@
     </div>
 
     <div class="ledger__figures" id="figures">
+      <!-- ГРУПА 1: ГРОШІ КЛІЄНТІВ -->
       <div class="figure-group">
-        <span class="figure-group__label">Фактичний дохід (ліди місяця)</span>
+        <span class="figure-group__label">Гроші клієнтів</span>
         <div class="figure-group__row">
           <div class="figure figure--accent-blue">
-            <span class="figure__label">Сплачено клієнтами</span>
+            <span class="figure__label">Сплачено (ліди місяця)</span>
             <span class="figure__value" id="figClientPaid">0 €</span>
           </div>
-          <div class="figure figure--accent-green">
-            <span class="figure__label">Мій факт</span>
-            <span class="figure__value" id="figMyFact">0 €</span>
-            <span class="figure__sub" id="figMyFactUAH">0 ₴</span>
+          <div class="figure figure--accent-blue">
+            <span class="figure__label">Загальний борг (всі місяці)</span>
+            <span class="figure__value" id="figClientPotential">0 €</span>
           </div>
         </div>
       </div>
 
+      <!-- ГРУПА 2: МОЇ ГРОШІ -->
       <div class="figure-group">
-        <span class="figure-group__label">Борги та очікування</span>
+        <span class="figure-group__label">Мої гроші</span>
         <div class="figure-group__row">
-          <div class="figure figure--accent-blue">
-            <span class="figure__label">Загальний борг клієнтів</span>
-            <span class="figure__value" id="figClientPotential">0 €</span>
+          <div class="figure figure--accent-green">
+            <span class="figure__label">Мій факт (ліди місяця)</span>
+            <span class="figure__value" id="figMyFact">0 €</span>
+            <span class="figure__sub" id="figMyFactUAH">0 ₴</span>
           </div>
           <div class="figure figure--accent-amber">
             <span class="figure__label">Очікую з боргів (міс / всі)</span>
@@ -59,6 +61,7 @@
         </div>
       </div>
 
+      <!-- ГРУПА 3: РОЗРАХУНКИ ТА ПРОГНОЗ -->
       <div class="figure-group">
         <span class="figure-group__label">Розрахунки та прогноз</span>
         <div class="figure-group__row">
@@ -295,6 +298,6 @@
 </div>
 
 <script src="config.js"></script>
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
