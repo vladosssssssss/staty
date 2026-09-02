@@ -133,7 +133,6 @@ table { width: 100%; border-collapse: collapse; }
 .form-row--split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .lead-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
 
-/* Глобальні стилі полів (ВИЛУЧЕНО input[type="month"]) */
 input[type="text"], input[type="number"], input[type="date"], select, textarea { width: 100%; box-sizing: border-box; display: block; background: var(--surface-2); border: 1px solid var(--rule); border-radius: var(--radius-sm); color: var(--text); font-family: var(--font-body); font-size: 14px; padding: 11px 12px; outline: none; transition: border 0.15s; -webkit-appearance: none; appearance: none; }
 select { background-image: linear-gradient(45deg, transparent 50%, var(--gold) 50%), linear-gradient(135deg, var(--gold) 50%, transparent 50%); background-position: calc(100% - 15px) 50%, calc(100% - 10px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; padding-right: 32px; cursor: pointer; }
 select option { background: var(--surface-2); color: var(--text); }
@@ -190,10 +189,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   .tab { flex: 1 1 auto; text-align: center; padding: 10px; font-size: 13px; white-space: nowrap; }
   .ledger__figures { gap: 10px; margin-top: 12px; }
   
-  .figure { padding: 8px 4px; gap: 3px; }
-  .figure__label { font-size: 8.5px; letter-spacing: 0; line-height: 1.15; }
-  .figure__value { font-size: 14.5px; overflow-wrap: anywhere; }
-  .figure__sub { font-size: 10.5px; }
+  .figure { padding: 8px 2px; gap: 2px; }
+  .figure__label { font-size: 8px; letter-spacing: 0; line-height: 1.1; }
+  .figure__value { font-size: 13.5px; word-break: break-word; }
+  .figure__sub { font-size: 9.5px; }
+
+  /* Робимо третій блок ще компактнішим, щоб влізли подвійні цифри */
+  .figure--cashflow .figure__label { font-size: 7.5px; }
+  .figure--cashflow .figure__value { font-size: 12.5px; letter-spacing: -0.3px; }
+  .figure--cashflow .figure__sub { font-size: 9px; letter-spacing: -0.2px; }
 
   .toolbar { align-items: stretch; gap: 10px; margin-bottom: 16px; }
   .month-nav, .search-box, .toolbar > .btn { width: 100%; }
@@ -214,7 +218,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   .mini-fig b { font-size: 13px; }
   .payments-table { min-width: 500px; }
   
-  /* ВИЛУЧЕНО input[type="month"] з глобального ресету для мобілки */
   input[type="text"], input[type="number"], input[type="date"], select, textarea { font-size: 16px; padding: 12px; min-height: 46px; }
   
   .toast { left: 12px; right: 12px; bottom: 12px; transform: translateY(20px); text-align: center; }
