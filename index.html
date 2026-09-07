@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20">
+<link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
 
@@ -29,7 +29,6 @@
     </div>
 
     <div class="ledger__figures" id="figures">
-      <!-- ГРУПА 1: ГРОШІ КЛІЄНТІВ -->
       <div class="figure-group">
         <span class="figure-group__label">Гроші клієнтів</span>
         <div class="figure-group__row">
@@ -44,7 +43,6 @@
         </div>
       </div>
 
-      <!-- ГРУПА 2: МОЇ ГРОШІ -->
       <div class="figure-group">
         <span class="figure-group__label">Мої гроші</span>
         <div class="figure-group__row">
@@ -61,7 +59,6 @@
         </div>
       </div>
 
-      <!-- ГРУПА 3: РОЗРАХУНКИ ТА ПРОГНОЗ -->
       <div class="figure-group">
         <span class="figure-group__label">Розрахунки та прогноз</span>
         <div class="figure-group__row">
@@ -127,10 +124,10 @@
     <div class="table-wrap">
       <table class="deals-table" id="payoutsTable">
         <thead>
-          <tr><th>Дата</th><th>Сума</th><th>Коментар</th><th></th></tr>
+          <tr><th>Дата</th><th>Сума ЗП</th><th>Бонус</th><th>Коментар</th><th></th></tr>
         </thead>
         <tbody id="payoutsBody">
-          <tr><td colspan="4" class="empty-row">Завантаження…</td></tr>
+          <tr><td colspan="5" class="empty-row">Завантаження…</td></tr>
         </tbody>
       </table>
     </div>
@@ -176,6 +173,7 @@
             <option value="Бронь">Бронь (0 €)</option>
             <option value="Часткова оплата">Частина суми</option>
             <option value="Оплачено повністю">Повна оплата</option>
+            <option value="Оплачено повністю (договір)">Оплачено повністю (договір)</option>
           </select>
         </div>
         <div><label>Сума першого платежу, €</label><input type="number" id="fFirstPayment" placeholder="0" value="0"></div>
@@ -216,6 +214,7 @@
             <option value="Бронь">Бронь</option>
             <option value="Часткова оплата">Часткова оплата</option>
             <option value="Оплачено повністю">Оплачено повністю</option>
+            <option value="Оплачено повністю (договір)">Оплачено повністю (договір)</option>
           </select>
         </div>
       </div>
@@ -275,7 +274,10 @@
     </div>
     <div class="modal__body">
       <div class="form-row form-row--split">
-        <div><label>Сума, €</label><input type="number" id="oAmount" placeholder="0"></div>
+        <div><label>Сума ЗП, ₴</label><input type="number" id="oAmountUAH" placeholder="0"></div>
+        <div><label>Бонус, ₴</label><input type="number" id="oBonusUAH" placeholder="0" value="0"></div>
+      </div>
+      <div class="form-row form-row--split">
         <div><label>Дата</label><input type="date" id="oDate"></div>
       </div>
       <div class="form-row">
@@ -297,7 +299,7 @@
   <p>Збереження даних...</p>
 </div>
 
-<script src="config.js?v=2"></script>
-<script src="app.js?v=20"></script>
+<script src="config.js"></script>
+<script src="app.js?v=24"></script>
 </body>
 </html>

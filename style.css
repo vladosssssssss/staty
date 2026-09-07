@@ -113,6 +113,7 @@ table { width: 100%; border-collapse: collapse; }
 .badge--green { background: var(--green-soft); color: var(--green); }
 .badge--amber { background: var(--gold-soft); color: var(--gold); }
 .badge--red { background: var(--red-soft); color: var(--red); }
+.badge--blue { background: var(--blue-soft); color: var(--blue); }
 .badge--muted { background: var(--surface-3); color: var(--text-muted); }
 
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(6, 7, 9, 0.85); z-index: 100; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
@@ -120,7 +121,7 @@ table { width: 100%; border-collapse: collapse; }
 .modal { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); width: 480px; max-width: 100%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5); overflow: hidden; }
 .modal--wide { width: 720px; }
 .modal--small { width: 380px; }
-.modal__head { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
+.modal__head { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
 .modal__head h3 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; text-align: center; width: 100%; }
 .modal__head .icon-btn { position: absolute; right: 20px; }
 .modal__body { padding: 24px; overflow-y: auto; scrollbar-gutter: stable; flex-grow: 1; }
@@ -194,7 +195,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   .figure__value { font-size: 13.5px; word-break: break-word; }
   .figure__sub { font-size: 9.5px; }
 
-  /* Робимо третій блок ще компактнішим, щоб влізли подвійні цифри */
   .figure--cashflow .figure__label { font-size: 7.5px; }
   .figure--cashflow .figure__value { font-size: 12.5px; letter-spacing: -0.3px; }
   .figure--cashflow .figure__sub { font-size: 9px; letter-spacing: -0.2px; }
