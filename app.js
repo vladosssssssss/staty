@@ -125,13 +125,13 @@ function leadCommissionFact(lead, targetMonth) {
 
 function leadCommissionPotential(lead, targetMonth) {
   if (lead.status === 'Оплачено повністю (договір)') {
-    const totalCommission = lead.price * (lead.commissionPercent / 100);
-    if (!targetMonth) {
-      const currentRealMonth = monthKey(new Date());
-      const m2 = shiftMonth(lead.month, 1);
-      return (currentRealMonth < m2) ? totalCommission / 2 : 0;
+    if (targetMonth) {
+      return 0; // Для поточного місяця контракт не йде в борг, бо ці гроші будуть наступного
     }
-    return 0; 
+    // Для глобального (за весь час) - контракт йде в борг, якщо місяць ще не настав
+    const currentRealMonth = monthKey(new Date());
+    const m2 = shiftMonth(lead.month, 1);
+    return (currentRealMonth < m2) ? (lead.price * (lead.commissionPercent / 100)) / 2 : 0;
   }
   return leadRemaining(lead) * (lead.commissionPercent / 100);
 }
@@ -160,13 +160,18 @@ function computeDashboard() {
   const allDashboardLeads = [...monthLeads, ...contractLeadsPrevMonth];
   
   const clientPaidFact = allDashboardLeads.reduce((s, l) => s + leadPaidTotal(l), 0);
-  const clientPotentialFull = state.leads.reduce((s, l) => s + leadClientPotential(l), 0); 
+  const clientPotentialMonth = monthLeads.reduce((s, l) => s + leadRemaining(l), 0);
   
   const myFact = allDashboardLeads.reduce((s, l) => s + leadCommissionFact(l, state.currentMonth), 0);
-  const myPotentialMonth = allDashboardLeads.reduce((s, l) => s + leadCommissionPotential(l, state.currentMonth), 0); 
+  const myPotentialMonth = monthLeads.reduce((s, l) => s + leadCommissionPotential(l, state.currentMonth), 0); 
+  const myTotalMonth = myFact + myPotentialMonth;
+  
+  const clientPaidAllTime = state.leads.reduce((s, l) => s + leadPaidTotal(l), 0);
+  const clientPotentialFull = state.leads.reduce((s, l) => s + leadClientPotential(l), 0); 
+  const myFactAllTime = state.leads.reduce((s, l) => s + leadCommissionFact(l), 0);
   const myPotentialFull = state.leads.reduce((s, l) => s + leadCommissionPotential(l), 0); 
   
-  const expectedPayout = state.leads.reduce((s, l) => s + leadCommissionFact(l), 0) - state.payouts.reduce((s, p) => s + p.amount, 0);
+  const expectedPayout = myFactAllTime - state.payouts.reduce((s, p) => s + p.amount, 0);
 
   const today = new Date();
   const [selYear, selMonth] = state.currentMonth.split('-').map(Number);
@@ -182,12 +187,11 @@ function computeDashboard() {
   }
   
   const forecastEUR = ((myFact + myPotentialMonth) / daysPassed) * daysInMonth;
-  const myTotalMonth = myFact + myPotentialMonth;
 
   return {
-    clientPaidFact, clientPotentialFull,
-    myFact, myPotentialMonth, myPotentialFull,
-    expectedPayout, forecastEUR, myTotalMonth
+    clientPaidFact, clientPotentialMonth, myFact, myPotentialMonth, myTotalMonth,
+    clientPaidAllTime, clientPotentialFull, myFactAllTime, myPotentialFull,
+    expectedPayout, forecastEUR
   };
 }
 
@@ -195,33 +199,126 @@ function renderAll() { renderDashboard(); renderDealsTable(); renderPayoutsTable
 
 function renderDashboard() {
   const d = computeDashboard();
-  document.getElementById('figClientPaid').textContent = fmtEUR(d.clientPaidFact); 
+  
+  // Головний екран
   document.getElementById('figMyFact').textContent = fmtEUR(d.myFact); 
   document.getElementById('figMyFactUAH').textContent = fmtUAH(d.myFact * UAH_RATE);
   
-  document.getElementById('figClientPotential').textContent = fmtEUR(d.clientPotentialFull);
   document.getElementById('figMyPotential').innerHTML = `${fmtEUR(d.myPotentialMonth)} <span style="color:var(--text-dim)">/</span> ${fmtEUR(d.myPotentialFull)}`;
   document.getElementById('figMyPotentialUAH').innerHTML = `${fmtUAH(d.myPotentialMonth * UAH_RATE)} <span style="color:var(--text-dim)">/</span> ${fmtUAH(d.myPotentialFull * UAH_RATE)}`;
+
+  document.getElementById('figMyTotalMonth').textContent = fmtEUR(d.myTotalMonth);
+  document.getElementById('figMyTotalMonthUAH').textContent = fmtUAH(d.myTotalMonth * UAH_RATE);
+
+  document.getElementById('figForecast').textContent = fmtEUR(d.forecastEUR);
+  document.getElementById('figForecastUAH').textContent = fmtUAH(d.forecastEUR * UAH_RATE);
   
   document.getElementById('figOwed').textContent = fmtEUR(d.expectedPayout);
   document.getElementById('figOwedUAH').textContent = fmtUAH(d.expectedPayout * UAH_RATE);
+
+  // Очікування в модалці
+  document.getElementById('mdWaitMonth').textContent = fmtEUR(d.myPotentialMonth);
+  document.getElementById('mdWaitMonthUAH').textContent = fmtUAH(d.myPotentialMonth * UAH_RATE);
+  document.getElementById('mdWaitAll').textContent = fmtEUR(d.myPotentialFull);
+  document.getElementById('mdWaitAllUAH').textContent = fmtUAH(d.myPotentialFull * UAH_RATE);
   
-  document.getElementById('figForecast').innerHTML = `${fmtEUR(d.forecastEUR)} <span style="color:var(--text-dim)">/</span> ${fmtEUR(d.myTotalMonth)}`;
-  document.getElementById('figForecastUAH').innerHTML = `${fmtUAH(d.forecastEUR * UAH_RATE)} <span style="color:var(--text-dim)">/</span> ${fmtUAH(d.myTotalMonth * UAH_RATE)}`;
+  // Модалка: За місяць
+  document.getElementById('mdClientPaidMonth_EUR').textContent = fmtEUR(d.clientPaidFact);
+  document.getElementById('mdClientPaidMonth_UAH').textContent = fmtUAH(d.clientPaidFact * UAH_RATE);
+  document.getElementById('mdClientDebtMonth_EUR').textContent = fmtEUR(d.clientPotentialMonth);
+  document.getElementById('mdClientDebtMonth_UAH').textContent = fmtUAH(d.clientPotentialMonth * UAH_RATE);
+  document.getElementById('mdMyFactMonth_EUR').textContent = fmtEUR(d.myFact);
+  document.getElementById('mdMyFactMonth_UAH').textContent = fmtUAH(d.myFact * UAH_RATE);
+  document.getElementById('mdMyDebtMonth_EUR').textContent = fmtEUR(d.myPotentialMonth);
+  document.getElementById('mdMyDebtMonth_UAH').textContent = fmtUAH(d.myPotentialMonth * UAH_RATE);
+  
+  // Модалка: За весь час
+  document.getElementById('mdClientPaidAll_EUR').textContent = fmtEUR(d.clientPaidAllTime);
+  document.getElementById('mdClientPaidAll_UAH').textContent = fmtUAH(d.clientPaidAllTime * UAH_RATE);
+  document.getElementById('mdClientDebtAll_EUR').textContent = fmtEUR(d.clientPotentialFull);
+  document.getElementById('mdClientDebtAll_UAH').textContent = fmtUAH(d.clientPotentialFull * UAH_RATE);
+  document.getElementById('mdMyFactAll_EUR').textContent = fmtEUR(d.myFactAllTime);
+  document.getElementById('mdMyFactAll_UAH').textContent = fmtUAH(d.myFactAllTime * UAH_RATE);
+  document.getElementById('mdMyDebtAll_EUR').textContent = fmtEUR(d.myPotentialFull);
+  document.getElementById('mdMyDebtAll_UAH').textContent = fmtUAH(d.myPotentialFull * UAH_RATE);
+}
+
+function formatDateDayMonth(d) {
+    const m = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'][d.getMonth()];
+    return `${d.getDate()} ${m}`;
+}
+
+function renderSummaryText() {
+  const fromDateStr = document.getElementById('mdFromDate').value;
+  const toDateStr = document.getElementById('mdToDate').value;
+
+  if (!fromDateStr || !toDateStr) {
+      toast('Оберіть дати', true); return;
+  }
+
+  const fromD = new Date(fromDateStr);
+  const toD = new Date(toDateStr);
+
+  const periodLeads = state.leads.filter(l => l.createdDate >= fromDateStr && l.createdDate <= toDateStr);
+  
+  const carryOverLeads = state.leads.filter(l => {
+      if (l.status !== 'Оплачено повністю (договір)') return false;
+      const nextMonthFirstDay = shiftMonth(l.month, 1) + '-01'; 
+      return nextMonthFirstDay >= fromDateStr && nextMonthFirstDay <= toDateStr;
+  });
+
+  let myFact = 0;
+  let myPotential = 0;
+  let contractCount = 0;
+  let contractThisMonth = 0;
+  let contractNextMonth = 0;
+  let carryOverAmount = 0;
+
+  periodLeads.forEach(l => {
+      if (l.status === 'Оплачено повністю (договір)') {
+          contractCount++;
+          const totalCommission = l.price * (l.commissionPercent / 100);
+          myFact += totalCommission / 2;
+          contractThisMonth += totalCommission / 2;
+          contractNextMonth += totalCommission / 2;
+      } else {
+          myFact += leadPaidTotal(l) * (l.commissionPercent / 100);
+          myPotential += leadRemaining(l) * (l.commissionPercent / 100);
+      }
+  });
+
+  carryOverLeads.forEach(l => {
+      const totalCommission = l.price * (l.commissionPercent / 100);
+      myFact += totalCommission / 2;
+      carryOverAmount += totalCommission / 2;
+  });
+
+  const pureTotal = myFact + myPotential;
+  const grossTotal = pureTotal + contractNextMonth;
+
+  let text = `З ${formatDateDayMonth(fromD)} по ${formatDateDayMonth(toD)} ти фактично заробив <b>${fmtEUR(myFact)} = ${fmtUAH(myFact * UAH_RATE)}</b>, а потенційно очікуєш з боргів ще <b>${fmtEUR(myPotential)} = ${fmtUAH(myPotential * UAH_RATE)}</b>.<br><br>`;
+  
+  if (carryOverAmount > 0) {
+      text += `(У твій фактичний заробіток також увійшло <b>${fmtEUR(carryOverAmount)} = ${fmtUAH(carryOverAmount * UAH_RATE)}</b> з договорів минулого місяця).<br><br>`;
+  }
+
+  if (contractCount > 0) {
+      text += `При цьому <b>${contractCount}</b> клієнт(ів) підписали договір у цей період. Це означає, що <b>${fmtEUR(contractThisMonth)} = ${fmtUAH(contractThisMonth * UAH_RATE)}</b> пішло у факт зараз, а <b>${fmtEUR(contractNextMonth)} = ${fmtUAH(contractNextMonth * UAH_RATE)}</b> гарантовано перейде на наступний місяць.<br><br>`;
+      text += `По факту ти заробив сумарно <b>${fmtEUR(grossTotal)} = ${fmtUAH(grossTotal * UAH_RATE)}</b>, але з них <b>${fmtEUR(contractNextMonth)} = ${fmtUAH(contractNextMonth * UAH_RATE)}</b> увійшло в наступний місяць. Тому твій чистий заробіток саме за цей період становить <b>${fmtEUR(pureTotal)} = ${fmtUAH(pureTotal * UAH_RATE)}</b>.`;
+  } else {
+      text += `По факту твій чистий сумарний дохід (факт + борги) за цей період становить <b>${fmtEUR(pureTotal)} = ${fmtUAH(pureTotal * UAH_RATE)}</b>.`;
+  }
+
+  const box = document.getElementById('summaryTextBox');
+  box.innerHTML = text;
+  box.style.display = 'block';
 }
 
 function renderDealsTable() {
   const tbody = document.getElementById('dealsBody'); const q = state.searchQuery.trim().toLowerCase();
-  let list = q ? state.leads.filter(l => (l.clientName || '').toLowerCase().includes(q) || (l.nickname || '').toLowerCase().includes(q) || String(l.number).includes(q)) 
-               : state.leads.filter(l => l.month === state.currentMonth || (l.status === 'Оплачено повністю (договір)' && shiftMonth(l.month, 1) === state.currentMonth));
-  list = list.slice().sort((a, b) => (b.createdDate || '').localeCompare(a.createdDate || '') || b.number - a.number);
   
-  if (list.length === 0) { tbody.innerHTML = `<tr><td colspan="11" class="empty-row">${q ? 'Нічого не знайдено' : 'У цьому місяці ще немає лідів'}</td></tr>`; return; }
-  
-  const monthToPass = q ? null : state.currentMonth;
-
-  tbody.innerHTML = list.map(lead => `
-    <tr class="deal-row ${lead.cancelled ? 'row--cancelled' : ''}" data-id="${esc(lead.id)}">
+  function rowHtml(lead, monthToPass) {
+    return `<tr class="deal-row ${lead.cancelled ? 'row--cancelled' : ''}" data-id="${esc(lead.id)}">
       <td class="mono muted">#${lead.number}</td>
       <td><div class="cell-strong">${esc(lead.clientName || '—')}</div><div class="cell-sub">${esc(lead.nickname || '')}</div></td>
       <td><div class="cell-strong">${esc(lead.direction)}</div><div class="cell-sub">${esc(lead.tariff)}</div></td>
@@ -231,7 +328,30 @@ function renderDealsTable() {
       <td class="mono accent">${fmtEUR(leadCommissionFact(lead, monthToPass))}<div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 4px;">${fmtUAH(leadCommissionFact(lead, monthToPass) * UAH_RATE)}</div></td>
       <td><span class="badge ${statusClass(leadStatusDisplay(lead))}">${esc(leadStatusDisplay(lead))}</span></td>
       <td class="mono muted">${esc(lead.createdDate)}</td><td><button class="btn btn--tiny open-lead">Відкрити</button></td>
-    </tr>`).join('');
+    </tr>`;
+  }
+
+  if (q) {
+    let list = state.leads.filter(l => (l.clientName || '').toLowerCase().includes(q) || (l.nickname || '').toLowerCase().includes(q) || String(l.number).includes(q));
+    list = list.slice().sort((a, b) => (b.createdDate || '').localeCompare(a.createdDate || '') || b.number - a.number);
+    if (list.length === 0) { tbody.innerHTML = `<tr><td colspan="11" class="empty-row">Нічого не знайдено</td></tr>`; return; }
+    tbody.innerHTML = list.map(l => rowHtml(l, null)).join('');
+    return;
+  }
+
+  const thisMonth = state.leads.filter(l => l.month === state.currentMonth).sort((a, b) => (b.createdDate || '').localeCompare(a.createdDate || '') || b.number - a.number);
+  const prevMonth = state.leads.filter(l => l.status === 'Оплачено повністю (договір)' && shiftMonth(l.month, 1) === state.currentMonth).sort((a, b) => (b.createdDate || '').localeCompare(a.createdDate || '') || b.number - a.number);
+
+  if (thisMonth.length === 0 && prevMonth.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" class="empty-row">У цьому місяці ще немає лідів</td></tr>`; return;
+  }
+
+  let html = thisMonth.map(l => rowHtml(l, state.currentMonth)).join('');
+  if (prevMonth.length > 0) {
+    html += `<tr><td colspan="11" style="text-align:center; background:var(--surface-3); color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.5px; padding:10px;">↑ Нові ліди цього місяця &nbsp;|&nbsp; ↓ Перенесені договори з минулого місяця</td></tr>`;
+    html += prevMonth.map(l => rowHtml(l, state.currentMonth)).join('');
+  }
+  tbody.innerHTML = html;
 }
 
 function renderPayoutsTable() {
@@ -269,7 +389,12 @@ function populatePriceOptions(direction, tariff) {
   wrap.innerHTML = opts.map((o, i) => `<label class="price-opt"><input type="radio" name="fPriceOpt" value="${o.value}" ${i === 0 ? 'checked' : ''}><span class="price-opt__label">${o.label}</span><span class="price-opt__dash">—</span><span class="price-opt__value mono">${fmtEUR(o.value)}</span></label>`).join('');
 }
 
-function openModal(id) { document.getElementById(id).classList.add('open'); }
+function openModal(id) { 
+  document.getElementById(id).classList.add('open'); 
+  if (id === 'modalStats') {
+    document.getElementById('mdTabMonth').click();
+  }
+}
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.matches('[data-close-modal]')) closeModal(e.target.getAttribute('data-close-modal')); if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('open'); });
 
@@ -405,7 +530,7 @@ document.getElementById('btnSavePayout').addEventListener('click', async () => {
   
   if (amountUAH <= 0 && bonusUAH <= 0) { toast('Вкажи суму ЗП або бонус', true); return; } 
   
-  const amountEUR = amountUAH / UAH_RATE; // автоматична конвертація у євро
+  const amountEUR = amountUAH / UAH_RATE; 
   
   const payout = { id: 'local-out-' + Date.now(), amount: amountEUR, bonus: bonusUAH, date, comment }; 
   state.payouts.push(payout);
@@ -428,6 +553,36 @@ document.getElementById('settingsGroups').addEventListener('click', async e => {
   const setting = getSetting(payload.direction, payload.tariff); if (setting) Object.assign(setting, payload); persistState(); renderAll(); enqueueSync(async () => { await api('updateSettings', payload); });
 });
 
+document.getElementById('mdTabMonth').addEventListener('click', () => {
+  document.getElementById('mdTabMonth').classList.add('active');
+  document.getElementById('mdTabAll').classList.remove('active');
+  document.getElementById('mdViewMonth').style.display = 'block';
+  document.getElementById('mdViewAll').style.display = 'none';
+  document.getElementById('summaryTextBox').style.display = 'none';
+
+  const [y, m] = state.currentMonth.split('-');
+  document.getElementById('mdFromDate').value = `${y}-${m}-01`;
+  
+  let endD = new Date(y, m, 0).getDate();
+  const today = new Date();
+  if (today.getFullYear() == y && (today.getMonth() + 1) == m) endD = today.getDate();
+  document.getElementById('mdToDate').value = `${y}-${m}-${String(endD).padStart(2, '0')}`;
+});
+
+document.getElementById('mdTabAll').addEventListener('click', () => {
+  document.getElementById('mdTabAll').classList.add('active');
+  document.getElementById('mdTabMonth').classList.remove('active');
+  document.getElementById('mdViewAll').style.display = 'block';
+  document.getElementById('mdViewMonth').style.display = 'none';
+  document.getElementById('summaryTextBox').style.display = 'none';
+
+  if (state.leads.length > 0) {
+      const sorted = [...state.leads].sort((a,b) => a.createdDate.localeCompare(b.createdDate));
+      document.getElementById('mdFromDate').value = sorted[0].createdDate;
+      document.getElementById('mdToDate').value = todayStr();
+  }
+});
+
 document.getElementById('tabs').addEventListener('click', e => { if (!e.target.matches('.tab')) return; document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); e.target.classList.add('active'); document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById('view-' + e.target.getAttribute('data-tab')).classList.add('active'); });
 document.getElementById('monthPrev').addEventListener('click', () => { state.currentMonth = shiftMonth(state.currentMonth, -1); renderAll(); });
 document.getElementById('monthNext').addEventListener('click', () => { state.currentMonth = shiftMonth(state.currentMonth, 1); renderAll(); });
@@ -435,6 +590,9 @@ document.getElementById('monthToday').addEventListener('click', () => { state.cu
 document.getElementById('monthPicker').addEventListener('change', e => { if (e.target.value) { state.currentMonth = e.target.value; renderAll(); } });
 document.getElementById('searchInput').addEventListener('input', e => { state.searchQuery = e.target.value; document.getElementById('searchClear').hidden = !state.searchQuery; renderDealsTable(); });
 document.getElementById('searchClear').addEventListener('click', () => { state.searchQuery = ''; document.getElementById('searchInput').value = ''; document.getElementById('searchClear').hidden = true; renderDealsTable(); });
+
+document.getElementById('btnOpenStatsTop').addEventListener('click', () => { openModal('modalStats'); });
+document.getElementById('btnShowSummary').addEventListener('click', () => { renderSummaryText(); });
 
 if (hydrateLocalState()) renderAll();
 loadAll();

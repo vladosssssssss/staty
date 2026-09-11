@@ -43,7 +43,7 @@ body { background: var(--ink); color: var(--text); font-family: var(--font-body)
 .ledger__top { display: flex; align-items: center; gap: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
 .brand { display: flex; align-items: center; gap: 12px; }
 .brand__mark { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--ink); background: var(--gold); border-radius: 6px; padding: 8px 9px; letter-spacing: 0.5px; }
-.brand__text h1 { font-family: var(--font-display); font-size: 19px; font-weight: 600; margin: 0; letter-spacing: 0.2px; }
+.brand__text h1 { font-family: var(--font-display); font-size: 19px; font-weight: 600; margin: 0; letter-spacing: 0.2px; display: flex; align-items: center; }
 .brand__text span { font-size: 12px; color: var(--text-muted); }
 
 .tabs { display: flex; gap: 4px; margin-left: 12px; }
@@ -58,7 +58,7 @@ body { background: var(--ink); color: var(--text); font-family: var(--font-body)
 
 .figure { background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3px; }
 .figure__label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-dim); line-height: 1.2; }
-.figure__value { font-family: var(--font-mono); font-size: 18px; font-weight: 600; }
+.figure__value { font-family: var(--font-mono); font-size: 17px; font-weight: 600; }
 .figure__sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); line-height: 1.2; }
 .figure__sub span { color: var(--gold); font-weight: 500; }
 .figure--accent-green .figure__value { color: var(--green); }
@@ -121,13 +121,18 @@ table { width: 100%; border-collapse: collapse; }
 .modal { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); width: 480px; max-width: 100%; max-height: calc(100vh - 40px); display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5); overflow: hidden; }
 .modal--wide { width: 720px; }
 .modal--small { width: 380px; }
-.modal__head { position: relative; display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
+.modal__head { display: flex; align-items: center; justify-content: space-between; padding: 18px 24px; border-bottom: 1px solid var(--rule); flex-shrink: 0; }
 .modal__head h3 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; text-align: center; width: 100%; }
 .modal__head .icon-btn { position: absolute; right: 20px; }
 .modal__body { padding: 24px; overflow-y: auto; scrollbar-gutter: stable; flex-grow: 1; }
 .modal__foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--rule); flex-shrink: 0; }
 .modal__foot--inline { justify-content: space-between; align-items: center; border-top: none; padding: 12px 0 16px; display: flex; }
 .modal-actions-group { display: flex; gap: 10px; }
+
+.md-tabs { display: flex; border-bottom: 1px solid var(--rule); margin-bottom: 16px; flex-shrink: 0; }
+.md-tab { flex: 1; background: transparent; border: none; padding: 12px; font-family: var(--font-body); font-weight: 600; font-size: 13.5px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+.md-tab:hover { color: var(--text); }
+.md-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
 
 .form-row { margin-bottom: 16px; }
 .form-row label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; text-align: left; }
@@ -184,7 +189,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   .ledger { padding-top: 14px; margin-bottom: 18px; }
   .ledger__top { display: block; padding-bottom: 12px; }
   .brand { gap: 10px; justify-content: center; margin-bottom: 14px; }
-  .brand__text h1 { text-align: center; }
+  .brand__text h1 { text-align: center; justify-content: center; }
   .brand__text span { display: block; text-align: center; }
   .tabs { width: 100%; margin: 0; flex-wrap: wrap; gap: 6px; }
   .tab { flex: 1 1 auto; text-align: center; padding: 10px; font-size: 13px; white-space: nowrap; }

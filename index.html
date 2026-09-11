@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=24">
+<link rel="stylesheet" href="style.css?v=33">
 </head>
 <body>
 
@@ -28,49 +28,56 @@
       </nav>
     </div>
 
-    <div class="ledger__figures" id="figures">
-      <div class="figure-group">
-        <span class="figure-group__label">Гроші клієнтів</span>
-        <div class="figure-group__row">
-          <div class="figure figure--accent-blue">
-            <span class="figure__label">Сплачено (ліди місяця)</span>
-            <span class="figure__value" id="figClientPaid">0 €</span>
-          </div>
-          <div class="figure figure--accent-blue">
-            <span class="figure__label">Загальний борг (всі місяці)</span>
-            <span class="figure__value" id="figClientPotential">0 €</span>
-          </div>
-        </div>
-      </div>
+    <!-- Акуратна кнопка повної статистики -->
+    <div style="margin: 14px 0 8px;">
+      <button class="btn" id="btnOpenStatsTop" style="padding: 6px 14px; font-size: 13px; font-weight: 500; background: var(--surface-2); border: 1px solid var(--rule); color: var(--text); border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+        📊 Повна статистика
+      </button>
+    </div>
 
+    <div class="ledger__figures" id="figures">
+      <!-- ГРУПА 1: ПОТОЧНИЙ МІСЯЦЬ -->
       <div class="figure-group">
-        <span class="figure-group__label">Мої гроші</span>
+        <span class="figure-group__label">Цього місяця</span>
         <div class="figure-group__row">
           <div class="figure figure--accent-green">
-            <span class="figure__label">Мій факт (ліди місяця)</span>
+            <span class="figure__label">Мій факт</span>
             <span class="figure__value" id="figMyFact">0 €</span>
             <span class="figure__sub" id="figMyFactUAH">0 ₴</span>
           </div>
           <div class="figure figure--accent-amber">
-            <span class="figure__label">Очікую з боргів (міс / всі)</span>
+            <span class="figure__label" style="font-size: 8.5px; letter-spacing: -0.2px;">Очікую з боргів (міс/всі)</span>
             <span class="figure__value" id="figMyPotential">0 € <span style="color:var(--text-dim)">/</span> 0 €</span>
             <span class="figure__sub" id="figMyPotentialUAH">0 ₴ <span style="color:var(--text-dim)">/</span> 0 ₴</span>
           </div>
         </div>
       </div>
 
+      <!-- ГРУПА 2: ПІДСУМОК ТА ПРОГНОЗ -->
       <div class="figure-group">
-        <span class="figure-group__label">Розрахунки та прогноз</span>
+        <span class="figure-group__label">Підсумок місяця</span>
         <div class="figure-group__row">
+          <div class="figure figure--cashflow">
+            <span class="figure__label">Сумарно (Факт + Борг)</span>
+            <span class="figure__value" id="figMyTotalMonth">0 €</span>
+            <span class="figure__sub" id="figMyTotalMonthUAH">0 ₴</span>
+          </div>
+          <div class="figure figure--accent-blue">
+            <span class="figure__label">Прогноз</span>
+            <span class="figure__value" id="figForecast">0 €</span>
+            <span class="figure__sub" id="figForecastUAH">0 ₴</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ГРУПА 3: БАЛАНС -->
+      <div class="figure-group">
+        <span class="figure-group__label">Баланс</span>
+        <div class="figure-group__row" style="grid-template-columns: 1fr;">
           <div class="figure figure--accent-red">
             <span class="figure__label">Очікується виплата</span>
             <span class="figure__value" id="figOwed">0 €</span>
             <span class="figure__sub" id="figOwedUAH">0 ₴</span>
-          </div>
-          <div class="figure figure--cashflow">
-            <span class="figure__label">Прогноз / Разом (міс)</span>
-            <span class="figure__value" id="figForecast">0 € <span style="color:var(--text-dim)">/</span> 0 €</span>
-            <span class="figure__sub" id="figForecastUAH">0 ₴ <span style="color:var(--text-dim)">/</span> 0 ₴</span>
           </div>
         </div>
       </div>
@@ -124,7 +131,7 @@
     <div class="table-wrap">
       <table class="deals-table" id="payoutsTable">
         <thead>
-          <tr><th>Дата</th><th>Сума ЗП</th><th>Бонус</th><th>Коментар</th><th></th></tr>
+          <tr><th>Дата</th><th>Сума ЗП (₴)</th><th>Бонус (₴)</th><th>Коментар</th><th></th></tr>
         </thead>
         <tbody id="payoutsBody">
           <tr><td colspan="5" class="empty-row">Завантаження…</td></tr>
@@ -141,6 +148,7 @@
   </main>
 </div>
 
+<!-- Модалки додавання / редагування лідів та виплат -->
 <div class="modal-overlay" id="modalAddLead">
   <div class="modal">
     <div class="modal__head">
@@ -292,6 +300,104 @@
   </div>
 </div>
 
+<!-- Модалка Повної Статистики -->
+<div class="modal-overlay" id="modalStats">
+  <div class="modal modal--wide">
+    <div class="modal__head">
+      <h3>Повна статистика</h3>
+      <button class="icon-btn" data-close-modal="modalStats">✕</button>
+    </div>
+
+    <div class="modal__body">
+      
+      <!-- Блок загальних очікувань -->
+      <div style="display: flex; gap: 12px; margin-bottom: 20px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--rule);">
+         <div style="flex:1;">
+            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Очікую з боргів (цей місяць)</div>
+            <div class="mono" style="font-size: 16px; font-weight: 600; color: var(--gold);" id="mdWaitMonth">0 €</div>
+            <div class="mono" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="mdWaitMonthUAH">0 ₴</div>
+         </div>
+         <div style="flex:1; text-align:right;">
+            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Очікую сумарно (всі місяці)</div>
+            <div class="mono" style="font-size: 16px; font-weight: 600; color: var(--gold);" id="mdWaitAll">0 €</div>
+            <div class="mono" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="mdWaitAllUAH">0 ₴</div>
+         </div>
+      </div>
+
+      <div class="md-tabs">
+        <button class="md-tab active" id="mdTabMonth">За обраний місяць</button>
+        <button class="md-tab" id="mdTabAll">За весь час</button>
+      </div>
+
+      <!-- Вкладка Місяць -->
+      <div id="mdViewMonth">
+        <div class="lead-summary">
+          <div class="mini-fig">
+            <span>Сплачено клієнтами</span>
+            <b class="mono positive" id="mdClientPaidMonth_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientPaidMonth_UAH">0 ₴</span>
+          </div>
+          <div class="mini-fig">
+            <span>Борг клієнтів</span>
+            <b class="mono negative" id="mdClientDebtMonth_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientDebtMonth_UAH">0 ₴</span>
+          </div>
+          <div class="mini-fig">
+            <span>Мій факт</span>
+            <b class="mono positive" id="mdMyFactMonth_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyFactMonth_UAH">0 ₴</span>
+          </div>
+          <div class="mini-fig">
+            <span>Мої борги</span>
+            <b class="mono" style="color:var(--gold)" id="mdMyDebtMonth_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyDebtMonth_UAH">0 ₴</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Вкладка Всі Часи -->
+      <div id="mdViewAll" style="display:none;">
+        <div class="lead-summary">
+          <div class="mini-fig">
+            <span>Сплачено клієнтами</span>
+            <b class="mono positive" id="mdClientPaidAll_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientPaidAll_UAH">0 ₴</span>
+          </div>
+          <div class="mini-fig">
+            <span>Борг клієнтів</span>
+            <b class="mono negative" id="mdClientDebtAll_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientDebtAll_UAH">0 ₴</span>
+          </div>
+          <div class="mini-fig">
+            <span>Мій факт</span>
+            <b class="mono positive" id="mdMyFactAll_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyFactAll_UAH">0 ₴</span>
+          </div>
+          <div class="mini-fig">
+            <span>Мої борги</span>
+            <b class="mono" style="color:var(--gold)" id="mdMyDebtAll_EUR">0 €</b>
+            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyDebtAll_UAH">0 ₴</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="rule">
+      <h4 style="margin:0 0 12px; color:var(--gold); font-size: 14px; text-transform:uppercase; letter-spacing:0.5px;">Генерація зрізу</h4>
+      <div style="display:flex; gap:10px; margin-bottom: 12px;">
+          <div style="flex:1;"><label style="font-size:11px; color:var(--text-muted);">З якого числа:</label><input type="date" id="mdFromDate"></div>
+          <div style="flex:1;"><label style="font-size:11px; color:var(--text-muted);">По яке число:</label><input type="date" id="mdToDate"></div>
+      </div>
+      
+      <button class="btn btn--primary" id="btnShowSummary" style="width: 100%; margin-bottom: 16px;">Сформувати зріз за обрані дати</button>
+      
+      <div id="summaryTextBox" style="display:none; background: var(--surface-3); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--rule); font-size: 13.5px; line-height: 1.6; color: var(--text);">
+        <!-- Текст генерується скриптом -->
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <div class="global-loader" id="globalLoader">
@@ -300,6 +406,6 @@
 </div>
 
 <script src="config.js"></script>
-<script src="app.js?v=24"></script>
+<script src="app.js?v=33"></script>
 </body>
 </html>
