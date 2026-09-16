@@ -58,7 +58,7 @@ body { background: var(--ink); color: var(--text); font-family: var(--font-body)
 
 .figure { background: var(--surface); padding: 10px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 3px; }
 .figure__label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-dim); line-height: 1.2; }
-.figure__value { font-family: var(--font-mono); font-size: 17px; font-weight: 600; }
+.figure__value { font-family: var(--font-mono); font-size: 15px; font-weight: 600; }
 .figure__sub { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); line-height: 1.2; }
 .figure__sub span { color: var(--gold); font-weight: 500; }
 .figure--accent-green .figure__value { color: var(--green); }

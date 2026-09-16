@@ -61,10 +61,19 @@ function toast(msg, isError) {
 }
 
 async function api(action, payload) {
-  const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), 15000);
+  const controller = new AbortController(); 
+  const timeout = setTimeout(() => controller.abort(), 30000); // ФІКС: Збільшений таймаут до 30 секунд
   let res;
-  try { res = await fetch(BACKEND_URL, { method: 'POST', body: JSON.stringify({ action, payload: payload || {} }), signal: controller.signal, cache: 'no-store' }); } 
-  catch (err) { if (err.name === 'AbortError') throw new Error('Таблиця не відповіла'); throw err; } finally { clearTimeout(timeout); }
+  try { 
+    res = await fetch(BACKEND_URL, { 
+      method: 'POST', 
+      body: JSON.stringify({ action, payload: payload || {} }), 
+      signal: controller.signal, 
+      cache: 'no-store',
+      redirect: 'follow' // ФІКС CORS: слідуємо за редіректами Гугла
+    }); 
+  } 
+  catch (err) { if (err.name === 'AbortError') throw new Error('Таблиця не відповіла за 30 секунд'); throw err; } finally { clearTimeout(timeout); }
   if (!res.ok) throw new Error('Помилка ' + res.status);
   const json = await res.json(); if (!json.ok) throw new Error(json.error || 'Невідома помилка'); return json.data;
 }
@@ -126,9 +135,8 @@ function leadCommissionFact(lead, targetMonth) {
 function leadCommissionPotential(lead, targetMonth) {
   if (lead.status === 'Оплачено повністю (договір)') {
     if (targetMonth) {
-      return 0; // Для поточного місяця контракт не йде в борг, бо ці гроші будуть наступного
+      return 0; 
     }
-    // Для глобального (за весь час) - контракт йде в борг, якщо місяць ще не настав
     const currentRealMonth = monthKey(new Date());
     const m2 = shiftMonth(lead.month, 1);
     return (currentRealMonth < m2) ? (lead.price * (lead.commissionPercent / 100)) / 2 : 0;
@@ -200,7 +208,6 @@ function renderAll() { renderDashboard(); renderDealsTable(); renderPayoutsTable
 function renderDashboard() {
   const d = computeDashboard();
   
-  // Головний екран
   document.getElementById('figMyFact').textContent = fmtEUR(d.myFact); 
   document.getElementById('figMyFactUAH').textContent = fmtUAH(d.myFact * UAH_RATE);
   
@@ -216,13 +223,11 @@ function renderDashboard() {
   document.getElementById('figOwed').textContent = fmtEUR(d.expectedPayout);
   document.getElementById('figOwedUAH').textContent = fmtUAH(d.expectedPayout * UAH_RATE);
 
-  // Очікування в модалці
   document.getElementById('mdWaitMonth').textContent = fmtEUR(d.myPotentialMonth);
   document.getElementById('mdWaitMonthUAH').textContent = fmtUAH(d.myPotentialMonth * UAH_RATE);
   document.getElementById('mdWaitAll').textContent = fmtEUR(d.myPotentialFull);
   document.getElementById('mdWaitAllUAH').textContent = fmtUAH(d.myPotentialFull * UAH_RATE);
   
-  // Модалка: За місяць
   document.getElementById('mdClientPaidMonth_EUR').textContent = fmtEUR(d.clientPaidFact);
   document.getElementById('mdClientPaidMonth_UAH').textContent = fmtUAH(d.clientPaidFact * UAH_RATE);
   document.getElementById('mdClientDebtMonth_EUR').textContent = fmtEUR(d.clientPotentialMonth);
@@ -232,7 +237,6 @@ function renderDashboard() {
   document.getElementById('mdMyDebtMonth_EUR').textContent = fmtEUR(d.myPotentialMonth);
   document.getElementById('mdMyDebtMonth_UAH').textContent = fmtUAH(d.myPotentialMonth * UAH_RATE);
   
-  // Модалка: За весь час
   document.getElementById('mdClientPaidAll_EUR').textContent = fmtEUR(d.clientPaidAllTime);
   document.getElementById('mdClientPaidAll_UAH').textContent = fmtUAH(d.clientPaidAllTime * UAH_RATE);
   document.getElementById('mdClientDebtAll_EUR').textContent = fmtEUR(d.clientPotentialFull);
