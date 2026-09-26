@@ -34,13 +34,32 @@ function hydrateLocalState() {
   } catch (err) { localStorage.removeItem(LOCAL_STATE_KEY); return false; }
 }
 
-function enqueueSync(task) { syncQueue.push(task); processSyncQueue(); }
+function enqueueSync(task, onFail) { syncQueue.push({ fn: task, attempts: 0, onFail }); processSyncQueue(); }
 
 async function processSyncQueue() {
   if (syncRunning || syncQueue.length === 0) return;
   syncRunning = true; showLoader();
-  try { await syncQueue[0](); syncQueue.shift(); } 
-  catch (err) { toast('Проблема з мережею: ' + err.message + '. Дані збережені локально.', true); syncRunning = false; hideLoader(); return; }
+  const job = syncQueue[0];
+  try {
+    await job.fn();
+    syncQueue.shift();
+  } catch (err) {
+    job.attempts += 1;
+    syncRunning = false; hideLoader();
+    if (job.attempts >= 3) {
+      // Три спроби не спрацювали — прибираємо завдання з черги, аби воно не лишалось "застряглим"
+      // і не намагалось повторюватись безкінечно. Якщо для нього передали onFail — відкатуємо
+      // локальні дані назад, щоб не було розсинхрону "виглядає збереженим, а насправді ні".
+      syncQueue.shift();
+      if (job.onFail) { try { job.onFail(err); } catch (e2) {} }
+      toast('Не вдалося зберегти: ' + err.message + '. Спробуй ще раз.', true);
+      if (syncQueue.length > 0) processSyncQueue();
+    } else {
+      toast('Проблема з мережею, повторюю спробу…', true);
+      setTimeout(processSyncQueue, 1500 * job.attempts);
+    }
+    return;
+  }
   syncRunning = false;
   if (syncQueue.length === 0) { 
     hideLoader(); 
@@ -48,6 +67,8 @@ async function processSyncQueue() {
     loadAll(); 
   } else { processSyncQueue(); }
 }
+
+function genId(prefix) { return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); }
 
 function monthKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
@@ -163,11 +184,14 @@ function statusClass(st) {
 }
 function leadById(id) { return state.leads.find(l => l.id === id); }
 
-// Кількість НОВИХ лідів обраного місяця, що вже мають хоч якусь оплату.
-// Перенесені договори з минулого місяця (в таблиці лідів вони йдуть окремим блоком нижче)
-// сюди не входять, бо ми фільтруємо строго по l.month === monthKey.
-function newPaidLeadsCountForMonth(monthKey) {
-  return state.leads.filter(l => l.month === monthKey && !l.cancelled && actualPaidTotal(l.id) > 0).length;
+// Кількість УСІХ нових лідів обраного місяця (включно з бронями), без перенесених договорів з минулого місяця.
+function allLeadsCountForMonth(monthKey) {
+  return state.leads.filter(l => l.month === monthKey && !l.cancelled).length;
+}
+// Скільки з них уже реально "зайшли в роботу" — тобто статус вище Броні
+// (Часткова оплата, Оплачено повністю, Оплачено повністю (договір)).
+function confirmedInWorkCountForMonth(monthKey) {
+  return state.leads.filter(l => l.month === monthKey && !l.cancelled && leadStatusDisplay(l) !== 'Бронь').length;
 }
 
 function computeDashboard() {
@@ -407,9 +431,9 @@ function openModal(id) {
     document.getElementById('mdTabMonth').click();
   }
   if (id === 'modalConversion') {
-    document.getElementById('cvPaymentsCount').value = newPaidLeadsCountForMonth(state.currentMonth);
+    document.getElementById('cvPaymentsCount').value = allLeadsCountForMonth(state.currentMonth);
     document.getElementById('cvConversionPercent').value = '';
-    document.getElementById('cvConfirmedCount').value = '';
+    document.getElementById('cvConfirmedCount').value = confirmedInWorkCountForMonth(state.currentMonth);
     document.getElementById('cvResultBox').style.display = 'none';
   }
 }
@@ -451,11 +475,35 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
   if (!clientName) { toast('Вкажи ім’я клієнта', true); return; }
   let price = s.price1; if (document.getElementById('fCustomPriceToggle').checked) price = Number(document.getElementById('fCustomPrice').value) || 0; else { const checked = document.querySelector('input[name="fPriceOpt"]:checked'); if (checked) price = Number(checked.value); }
   const status = document.getElementById('fStatus').value; const firstPayment = Number(document.getElementById('fFirstPayment').value) || 0;
-  const date = document.getElementById('fDate').value || todayStr(); const comment = document.getElementById('fComment').value.trim(); const tempId = 'local-' + Date.now();
-  const localLead = { id: tempId, number: Math.max(0, ...state.leads.map(l => Number(l.number) || 0)) + 1, clientName, nickname, direction, tariff, price, commissionPercent: Number(s.percent), status, comment, createdDate: date, month: date.substring(0, 7), cancelled: false };
-  state.leads.push(localLead); if (firstPayment > 0) state.payments.push({ id: 'local-pay-' + Date.now(), leadId: tempId, amount: firstPayment, date, comment: 'Перший платіж', cancelled: false });
+  const date = document.getElementById('fDate').value || todayStr(); const comment = document.getElementById('fComment').value.trim();
+  const leadId = genId('local'); const paymentId = firstPayment > 0 ? genId('local-pay') : null;
+  const localLead = { id: leadId, number: Math.max(0, ...state.leads.map(l => Number(l.number) || 0)) + 1, clientName, nickname, direction, tariff, price, commissionPercent: Number(s.percent), status, comment, createdDate: date, month: date.substring(0, 7), cancelled: false };
+  state.leads.push(localLead); if (firstPayment > 0) state.payments.push({ id: paymentId, leadId, amount: firstPayment, date, comment: 'Перший платіж', cancelled: false });
   state.currentMonth = date.substring(0, 7); persistState(); renderAll(); closeModal('modalAddLead');
-  enqueueSync(async () => { const created = await api('addLead', { clientName, nickname, direction, tariff, price, commissionPercent: Number(s.percent), status, comment, createdDate: date }); localLead.id = created.id; state.payments.forEach(p => { if (p.leadId === tempId) p.leadId = created.id; }); if (state.activeLeadId === tempId) state.activeLeadId = created.id; persistState(); if (firstPayment > 0) await api('addPayment', { leadId: created.id, amount: firstPayment, date, comment: 'Перший платіж' }); });
+
+  // id відправляється на бекенд одразу — лід локально і на сервері має однаковий id з самого початку,
+  // тож навіть повторна спроба після мережевого збою не створить дубль (бекенд це перевіряє за id).
+  enqueueSync(async () => {
+    await api('addLead', { id: leadId, clientName, nickname, direction, tariff, price, commissionPercent: Number(s.percent), status, comment, createdDate: date });
+  }, () => {
+    // Три спроби провалились — лід так і не потрапив у таблицю. Прибираємо його й з локального стану,
+    // щоб не було ситуації "виглядає доданим, а насправді ні".
+    state.leads = state.leads.filter(l => l.id !== leadId);
+    state.payments = state.payments.filter(p => p.leadId !== leadId);
+    persistState(); renderAll();
+  });
+
+  if (firstPayment > 0) {
+    enqueueSync(async () => {
+      if (!leadById(leadId)) return; // лід не зберігся — платіж уже не актуальний
+      await api('addPayment', { id: paymentId, leadId, amount: firstPayment, date, comment: 'Перший платіж' });
+    }, () => {
+      if (!leadById(leadId)) return;
+      state.payments = state.payments.filter(p => p.id !== paymentId);
+      persistState(); renderAll();
+      toast('Лід збережено, але перший платіж не вдалося додати. Додай його вручну.', true);
+    });
+  }
 });
 
 document.getElementById('dealsBody').addEventListener('click', e => { if (e.target.classList.contains('open-lead')) openLeadDetail(e.target.closest('tr').getAttribute('data-id')); });
@@ -547,8 +595,12 @@ document.getElementById('btnAddPayment').addEventListener('click', () => {
 
 document.getElementById('btnSavePayment').addEventListener('click', async () => {
   const amount = Number(document.getElementById('pAmount').value) || 0; const date = document.getElementById('pDate').value || todayStr(); const comment = document.getElementById('pComment').value.trim();
-  if (amount <= 0) { toast('Вкажи суму', true); return; } const payment = { id: 'local-pay-' + Date.now(), leadId: state.activeLeadId, amount, date, comment, cancelled: false }; state.payments.push(payment);
-  persistState(); renderAll(); closeModal('modalAddPayment'); openLeadDetail(state.activeLeadId); enqueueSync(async () => { await api('addPayment', { leadId: payment.leadId, amount, date, comment }); openLeadDetail(state.activeLeadId); });
+  if (amount <= 0) { toast('Вкажи суму', true); return; } const paymentId = genId('local-pay'); const payment = { id: paymentId, leadId: state.activeLeadId, amount, date, comment, cancelled: false }; state.payments.push(payment);
+  persistState(); renderAll(); closeModal('modalAddPayment'); openLeadDetail(state.activeLeadId);
+  enqueueSync(async () => { await api('addPayment', { id: paymentId, leadId: payment.leadId, amount, date, comment }); openLeadDetail(state.activeLeadId); }, () => {
+    state.payments = state.payments.filter(p => p.id !== paymentId); persistState(); renderAll();
+    if (state.activeLeadId) openLeadDetail(state.activeLeadId);
+  });
 });
 
 document.getElementById('btnAddPayout').addEventListener('click', () => { 
@@ -568,14 +620,16 @@ document.getElementById('btnSavePayout').addEventListener('click', async () => {
   if (amountUAH <= 0 && bonusUAH <= 0) { toast('Вкажи суму ЗП або бонус', true); return; } 
   
   const amountEUR = amountUAH / UAH_RATE; 
+  const payoutId = genId('local-out');
   
-  const payout = { id: 'local-out-' + Date.now(), amount: amountEUR, bonus: bonusUAH, date, comment }; 
+  const payout = { id: payoutId, amount: amountEUR, bonus: bonusUAH, date, comment }; 
   state.payouts.push(payout);
   persistState(); renderAll(); closeModal('modalAddPayout'); 
   
   enqueueSync(async () => { 
-    const created = await api('addPayout', { amount: amountEUR, bonus: bonusUAH, date, comment }); 
-    payout.id = created.id; persistState(); 
+    await api('addPayout', { id: payoutId, amount: amountEUR, bonus: bonusUAH, date, comment }); 
+  }, () => {
+    state.payouts = state.payouts.filter(p => p.id !== payoutId); persistState(); renderAll();
   });
 });
 

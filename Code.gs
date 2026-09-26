@@ -29,7 +29,7 @@ function ensureSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet(); function checkAndCreate(name, headers) { var sh = ss.getSheetByName(name); if (!sh) { sh = ss.insertSheet(name); sh.appendRow(headers); sh.setFrozenRows(1); } return sh; }
   var leads = checkAndCreate(SHEET_LEADS, LEADS_HEADERS); var payments = checkAndCreate(SHEET_PAYMENTS, PAYMENTS_HEADERS); var payouts = checkAndCreate(SHEET_PAYOUTS, PAYOUTS_HEADERS); var settings = checkAndCreate(SHEET_SETTINGS, SETTINGS_HEADERS);
   ensureDefaultSettingsPresent_(settings); var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('Аркуш1'); if (def && def.getLastRow() === 0) ss.deleteSheet(def);
-  forceTextFormat_(leads, [11, 12]); forceTextFormat_(payments, [4]); forceTextFormat_(payouts, [2]);
+  ensureTextFormatOnce_(leads, payments, payouts);
 }
 // Додає в лист "Settings" ті напрямки/тарифи з DEFAULT_SETTINGS, яких там ще немає.
 // Ніколи не чіпає і не перезаписує вже наявні рядки (навіть якщо ціни там були вручну змінені).
@@ -40,6 +40,17 @@ function ensureDefaultSettingsPresent_(sh) {
     vals.forEach(function(r) { existing[String(r[0]) + '||' + String(r[1])] = true; });
   }
   DEFAULT_SETTINGS.forEach(function(row) { var key = String(row[0]) + '||' + String(row[1]); if (!existing[key]) sh.appendRow(row); });
+}
+// ФІКС ШВИДКОСТІ: раніше форматування колонок з датами як текст (@) виконувалось на ~2000+ рядках
+// одразу трьох листів ПРИ КОЖНОМУ запиті (кожному відкритті сайту, кожному доданні ліда/платежу/виплати) —
+// саме це й було головною причиною, чому все довго "грузилось". Тепер це робиться лише ОДИН РАЗ
+// (позначка зберігається в Script Properties), а нові рядки форматуються точково, одразу при записі,
+// у addLead_ / addPayment_ / addPayout_ нижче.
+function ensureTextFormatOnce_(leads, payments, payouts) {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('textFormatMigrationDone_v1') === '1') return;
+  forceTextFormat_(leads, [11, 12]); forceTextFormat_(payments, [4]); forceTextFormat_(payouts, [2]);
+  props.setProperty('textFormatMigrationDone_v1', '1');
 }
 function forceTextFormat_(sheet, columns) { var rows = Math.max(sheet.getMaxRows() - 1, 2000); columns.forEach(function(col) { sheet.getRange(2, col, rows, 1).setNumberFormat('@'); }); }
 function sheetToObjects_(sheetName, headers) {
@@ -59,8 +70,21 @@ function nextLeadNumber_(sh) { var lastRow = sh.getLastRow(); if (lastRow < 2) r
 function addLead_(p) {
   var lock = LockService.getScriptLock(); lock.waitLock(10000);
   try {
-    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LEADS); var id = Utilities.getUuid(); var number = nextLeadNumber_(sh); var date = p.createdDate || formatDate_(new Date());
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LEADS);
+    // Ідемпотентність: якщо клієнт вже присилав саме цей id (напр. повторна спроба після
+    // мережевого збою, коли перший запит насправді таки дійшов) — не створюємо дубль,
+    // а повертаємо вже наявний запис.
+    if (p.id) {
+      var already = findRowById_(SHEET_LEADS, LEADS_HEADERS, p.id);
+      if (already) {
+        var row = already.sheet.getRange(already.row, 1, 1, LEADS_HEADERS.length).getValues()[0];
+        return { id: row[0], number: row[1], createdDate: formatDate_(row[10]), month: String(formatDate_(row[10])).substring(0, 7) };
+      }
+    }
+    var id = p.id || Utilities.getUuid(); var number = nextLeadNumber_(sh); var date = p.createdDate || formatDate_(new Date());
+    var rowIndex = sh.getLastRow() + 1;
     sh.appendRow([id, number, p.clientName || '', p.nickname || '', p.direction || '', p.tariff || '', Number(p.price) || 0, Number(p.commissionPercent) || 0, p.status || 'Бронь', p.comment || '', date, date.substring(0, 7), false]);
+    sh.getRange(rowIndex, 11, 1, 2).setNumberFormat('@'); // createdDate, month — точково, тільки цей рядок
     return { id: id, number: number, createdDate: date, month: date.substring(0, 7) };
   } finally { lock.releaseLock(); }
 }
@@ -89,7 +113,17 @@ function deleteLead_(p) {
 
 function addPayment_(p) {
   var lock = LockService.getScriptLock(); lock.waitLock(10000);
-  try { var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PAYMENTS); var id = Utilities.getUuid(); var date = p.date || formatDate_(new Date()); sh.appendRow([id, p.leadId, Number(p.amount) || 0, date, p.comment || '', false]); return { id: id, date: date }; } finally { lock.releaseLock(); }
+  try {
+    if (p.id) {
+      var already = findRowById_(SHEET_PAYMENTS, PAYMENTS_HEADERS, p.id);
+      if (already) { var row = already.sheet.getRange(already.row, 1, 1, PAYMENTS_HEADERS.length).getValues()[0]; return { id: row[0], date: formatDate_(row[3]) }; }
+    }
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PAYMENTS); var id = p.id || Utilities.getUuid(); var date = p.date || formatDate_(new Date());
+    var rowIndex = sh.getLastRow() + 1;
+    sh.appendRow([id, p.leadId, Number(p.amount) || 0, date, p.comment || '', false]);
+    sh.getRange(rowIndex, 4, 1, 1).setNumberFormat('@');
+    return { id: id, date: date };
+  } finally { lock.releaseLock(); }
 }
 function updatePayment_(p) {
   var lock = LockService.getScriptLock(); lock.waitLock(10000);
@@ -107,7 +141,17 @@ function deletePayment_(p) {
 
 function addPayout_(p) {
   var lock = LockService.getScriptLock(); lock.waitLock(10000);
-  try { var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PAYOUTS); var id = Utilities.getUuid(); var date = p.date || formatDate_(new Date()); sh.appendRow([id, date, Number(p.amount) || 0, p.comment || '', Number(p.bonus) || 0]); return { id: id, date: date }; } finally { lock.releaseLock(); }
+  try {
+    if (p.id) {
+      var already = findRowById_(SHEET_PAYOUTS, PAYOUTS_HEADERS, p.id);
+      if (already) { var row = already.sheet.getRange(already.row, 1, 1, PAYOUTS_HEADERS.length).getValues()[0]; return { id: row[0], date: formatDate_(row[1]) }; }
+    }
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PAYOUTS); var id = p.id || Utilities.getUuid(); var date = p.date || formatDate_(new Date());
+    var rowIndex = sh.getLastRow() + 1;
+    sh.appendRow([id, date, Number(p.amount) || 0, p.comment || '', Number(p.bonus) || 0]);
+    sh.getRange(rowIndex, 2, 1, 1).setNumberFormat('@');
+    return { id: id, date: date };
+  } finally { lock.releaseLock(); }
 }
 function updatePayout_(p) {
   var lock = LockService.getScriptLock(); lock.waitLock(10000);
