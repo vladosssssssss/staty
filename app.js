@@ -3,6 +3,7 @@
 const BACKEND_URL = window.APP_CONFIG.BACKEND_URL;
 const UAH_RATE = window.APP_CONFIG.UAH_RATE;
 const LOCAL_STATE_KEY = 'my-stata-state-v1';
+const BRON_THRESHOLD_EUR = 150; // сплачено < 150€ → Бронь; сплачено >= 150€ (і менше ціни) → Часткова оплата
 const syncQueue = [];
 let syncRunning = false;
 let localRevision = 0;
@@ -149,8 +150,8 @@ function leadStatusDisplay(lead) {
   if (lead.status === 'Оплачено повністю (договір)') return 'Оплачено повністю (договір)';
   const paid = actualPaidTotal(lead.id);
   if (lead.price > 0 && paid >= lead.price) return 'Оплачено повністю'; 
-  if (paid > 0) return 'Часткова оплата'; 
-  return lead.status || 'Бронь'; 
+  if (paid >= BRON_THRESHOLD_EUR) return 'Часткова оплата'; 
+  return 'Бронь'; 
 }
 
 function statusClass(st) { 
@@ -161,6 +162,13 @@ function statusClass(st) {
   return 'badge--muted'; 
 }
 function leadById(id) { return state.leads.find(l => l.id === id); }
+
+// Кількість НОВИХ лідів обраного місяця, що вже мають хоч якусь оплату.
+// Перенесені договори з минулого місяця (в таблиці лідів вони йдуть окремим блоком нижче)
+// сюди не входять, бо ми фільтруємо строго по l.month === monthKey.
+function newPaidLeadsCountForMonth(monthKey) {
+  return state.leads.filter(l => l.month === monthKey && !l.cancelled && actualPaidTotal(l.id) > 0).length;
+}
 
 function computeDashboard() {
   const monthLeads = state.leads.filter(l => l.month === state.currentMonth);
@@ -398,6 +406,31 @@ function openModal(id) {
   if (id === 'modalStats') {
     document.getElementById('mdTabMonth').click();
   }
+  if (id === 'modalConversion') {
+    document.getElementById('cvPaymentsCount').value = newPaidLeadsCountForMonth(state.currentMonth);
+    document.getElementById('cvConversionPercent').value = '';
+    document.getElementById('cvConfirmedCount').value = '';
+    document.getElementById('cvResultBox').style.display = 'none';
+  }
+}
+
+function calcConversion() {
+  const paymentsCount = Number(document.getElementById('cvPaymentsCount').value) || 0;
+  const knownPercent = Number(document.getElementById('cvConversionPercent').value) || 0;
+  const confirmedCount = Number(document.getElementById('cvConfirmedCount').value) || 0;
+
+  if (paymentsCount <= 0) { toast('Вкажи кількість оплат', true); return; }
+  if (knownPercent <= 0) { toast('Вкажи відому конверсію, %', true); return; }
+
+  // Якщо paymentsCount оплат = knownPercent% від загального потоку "дверей",
+  // то весь потік = paymentsCount / (knownPercent / 100).
+  // Конверсія confirmedCount людей у роботу — це їхня частка від того ж потоку.
+  const totalPool = paymentsCount / (knownPercent / 100);
+  const confirmedPercent = totalPool > 0 ? (confirmedCount / totalPool) * 100 : 0;
+
+  document.getElementById('cvResultPercent').textContent = confirmedPercent.toFixed(2) + '%';
+  document.getElementById('cvResultPool').textContent = 'Орієнтовний загальний потік («двері»): ' + Math.round(totalPool) + ' ос.';
+  document.getElementById('cvResultBox').style.display = 'block';
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 document.addEventListener('click', e => { if (e.target.matches('[data-close-modal]')) closeModal(e.target.getAttribute('data-close-modal')); if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('open'); });
@@ -597,6 +630,8 @@ document.getElementById('searchClear').addEventListener('click', () => { state.s
 
 document.getElementById('btnOpenStatsTop').addEventListener('click', () => { openModal('modalStats'); });
 document.getElementById('btnShowSummary').addEventListener('click', () => { renderSummaryText(); });
+document.getElementById('btnOpenConversion').addEventListener('click', () => { openModal('modalConversion'); });
+document.getElementById('btnCalcConversion').addEventListener('click', calcConversion);
 
 if (hydrateLocalState()) renderAll();
 loadAll();

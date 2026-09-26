@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=33">
+<link rel="stylesheet" href="style.css?v=34">
 </head>
 <body>
 
@@ -28,10 +28,13 @@
       </nav>
     </div>
 
-    <!-- Акуратна кнопка повної статистики -->
-    <div style="margin: 14px 0 8px;">
+    <!-- Акуратні кнопки повної статистики та конверсії -->
+    <div style="margin: 14px 0 8px; display:flex; gap:8px; flex-wrap:wrap;">
       <button class="btn" id="btnOpenStatsTop" style="padding: 6px 14px; font-size: 13px; font-weight: 500; background: var(--surface-2); border: 1px solid var(--rule); color: var(--text); border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
         📊 Повна статистика
+      </button>
+      <button class="btn" id="btnOpenConversion" style="padding: 6px 14px; font-size: 13px; font-weight: 500; background: var(--surface-2); border: 1px solid var(--rule); color: var(--text); border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+        📈 Конверсія
       </button>
     </div>
 
@@ -398,6 +401,39 @@
   </div>
 </div>
 
+<!-- Модалка розрахунку конверсії -->
+<div class="modal-overlay" id="modalConversion">
+  <div class="modal modal--small">
+    <div class="modal__head">
+      <h3>Конверсія «в роботу»</h3>
+      <button class="icon-btn" data-close-modal="modalConversion">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="form-row">
+        <label>Кількість оплат цього місяця (нові, без перенесених договорів)</label>
+        <input type="number" id="cvPaymentsCount" placeholder="0">
+      </div>
+      <div class="form-row">
+        <label>Відома конверсія для цієї кількості, %</label>
+        <input type="number" id="cvConversionPercent" placeholder="напр. 33" step="0.01">
+      </div>
+      <div class="form-row">
+        <label>Скільки з них зайшло в роботу</label>
+        <input type="number" id="cvConfirmedCount" placeholder="0">
+      </div>
+      <div id="cvResultBox" style="display:none; background: var(--surface-3); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--rule); margin-top: 4px;">
+        <div style="font-size: 10px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Конверсія «в роботу»</div>
+        <div class="mono" style="font-size: 20px; font-weight: 700; color: var(--gold);" id="cvResultPercent">0%</div>
+        <div class="mono" style="font-size: 11px; color: var(--text-muted); margin-top: 6px;" id="cvResultPool"></div>
+      </div>
+    </div>
+    <div class="modal__foot">
+      <button class="btn" data-close-modal="modalConversion">Закрити</button>
+      <button class="btn btn--primary" id="btnCalcConversion">Порахувати</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <div class="global-loader" id="globalLoader">
@@ -406,6 +442,6 @@
 </div>
 
 <script src="config.js"></script>
-<script src="app.js?v=33"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>
