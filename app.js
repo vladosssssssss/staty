@@ -416,7 +416,7 @@ function renderSummaryText() {
   periodLeads.forEach(l => {
     if (l.status === 'Оплачено повністю (договір)') {
       contractCount++;
-      const totalCommission = toNum(l.price) * (toNum(l.commissionPercent) / 100);
+      const totalCommission = toNum(l.price) * (toNum(lead.commissionPercent) / 100);
       myFact += totalCommission / 2;
       contractThisMonth += totalCommission / 2;
       contractNextMonth += totalCommission / 2;
@@ -426,7 +426,7 @@ function renderSummaryText() {
   });
 
   carryOverLeads.forEach(l => {
-    const totalCommission = toNum(l.price) * (toNum(l.commissionPercent) / 100);
+    const totalCommission = toNum(l.price) * (toNum(lead.commissionPercent) / 100);
     myFact += totalCommission / 2;
     carryOverAmount += totalCommission / 2;
   });
@@ -555,6 +555,7 @@ function renderPayoutsTable() {
     const extraPct = toNum(p.extraPercent);
     const extraUAH = toNum(p.extraAmount);
     const totalUAH = baseUAH + bonusUAH + extraUAH;
+    const totalEUR = totalUAH / UAH_RATE;
 
     let extraHtml = '—';
     if (extraUAH > 0 || extraPct > 0) {
@@ -570,7 +571,10 @@ function renderPayoutsTable() {
       </td>
       <td class="mono accent">${bonusUAH > 0 ? '+ ' + fmtUAH(bonusUAH) : '—'}</td>
       <td class="mono accent">${extraHtml}</td>
-      <td class="mono" style="font-weight:700; color:var(--text);">${fmtUAH(totalUAH)}</td>
+      <td class="mono" style="font-weight:700; color:var(--text);">
+        ${fmtUAH(totalUAH)}
+        <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 400; margin-top: 4px;">≈ ${fmtEUR(totalEUR)}</div>
+      </td>
       <td style="text-align:left;">${esc(p.comment)}</td>
       <td>
         <div style="display:flex; gap:6px; justify-content:center;">
@@ -1083,11 +1087,11 @@ function updatePayoutTotalPreview() {
   const baseUAH = toNum(document.getElementById('oAmountUAH').value);
   const bonusUAH = toNum(document.getElementById('oBonusUAH').value);
   const extraUAH = toNum(document.getElementById('oExtraAmountUAH').value);
-  const extraPct = toNum(document.getElementById('oExtraPercent').value);
   const total = baseUAH + bonusUAH + extraUAH;
+  const totalEUR = total / UAH_RATE;
   const el = document.getElementById('oTotalPreview');
   if (el) {
-    el.textContent = fmtUAH(total) + (extraPct > 0 ? ` (вкл. ${extraPct}%)` : '');
+    el.innerHTML = `${fmtUAH(total)} <span style="font-size: 11px; color: var(--text-muted); font-weight: 400;">(≈ ${fmtEUR(totalEUR)})</span>`;
   }
 }
 
