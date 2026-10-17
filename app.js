@@ -3,14 +3,19 @@
 const BACKEND_URL = window.APP_CONFIG.BACKEND_URL;
 const UAH_RATE = window.APP_CONFIG.UAH_RATE;
 const LOCAL_STATE_KEY = 'my-stata-state-v1';
-const BRON_THRESHOLD_EUR = 150; // сплачено < 150€ → Бронь; сплачено >= 150€ (і менше ціни) → Часткова оплата
+const BRON_THRESHOLD_EUR = 150;
 let loaderCount = 0;
 
 const state = {
   leads: [], payments: [], payouts: [], settings: [],
   currentMonth: monthKey(new Date()), searchQuery: '',
-  activeLeadId: null, loaded: false
+  activeLeadId: null, editingPayoutId: null, loaded: false
 };
+
+function toNum(v) {
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  return Number(String(v == null ? '' : v).replace(',', '.').replace(/\s+/g, '')) || 0;
+}
 
 function showLoader(text) {
   loaderCount++;
@@ -45,7 +50,7 @@ function hydrateLocalState() {
     if (!saved) return false;
     state.leads = (saved.leads || []).map(normalizeLeadLocal);
     state.payments = (saved.payments || []).map(normalizePaymentLocal);
-    state.payouts = saved.payouts || [];
+    state.payouts = (saved.payouts || []).map(normalizePayoutLocal);
     state.settings = saved.settings || [];
     state.loaded = true;
     return true;
@@ -56,9 +61,9 @@ function hydrateLocalState() {
 }
 
 function normalizeLeadLocal(l) {
-  l.number = Number(l.number) || 0;
-  l.price = Number(l.price) || 0;
-  l.commissionPercent = Number(l.commissionPercent) || 0;
+  l.number = toNum(l.number);
+  l.price = toNum(l.price);
+  l.commissionPercent = toNum(l.commissionPercent);
   l.clientName = l.clientName == null ? '' : String(l.clientName);
   l.nickname = l.nickname == null ? '' : String(l.nickname);
   l.comment = l.comment == null ? '' : String(l.comment);
@@ -69,10 +74,20 @@ function normalizeLeadLocal(l) {
 }
 
 function normalizePaymentLocal(p) {
-  p.amount = Number(p.amount) || 0;
+  p.amount = toNum(p.amount);
   p.date = p.date == null ? '' : String(p.date);
   p.comment = p.comment == null ? '' : String(p.comment);
   p.cancelled = !!p.cancelled;
+  return p;
+}
+
+function normalizePayoutLocal(p) {
+  p.amount = toNum(p.amount);
+  p.bonus = toNum(p.bonus);
+  p.extraPercent = toNum(p.extraPercent);
+  p.extraAmount = toNum(p.extraAmount);
+  p.date = p.date == null ? '' : String(p.date);
+  p.comment = p.comment == null ? '' : String(p.comment);
   return p;
 }
 
@@ -80,7 +95,7 @@ function genId(prefix) { return prefix + '-' + Date.now() + '-' + Math.random().
 function monthKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 function shiftMonth(key, delta) { const [y, m] = String(key || '').split('-').map(Number); if (!y || !m) return monthKey(new Date()); return monthKey(new Date(y, m - 1 + delta, 1)); }
-function fmtMoney(n, cur) { return (Number(n) || 0).toLocaleString('uk-UA', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ' + (cur || '€'); }
+function fmtMoney(n, cur) { return toNum(n).toLocaleString('uk-UA', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ' + (cur || '€'); }
 function fmtEUR(n) { return fmtMoney(n, '€'); }
 function fmtUAH(n) { return fmtMoney(n, '₴'); }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -123,7 +138,7 @@ async function loadAll(showFullLoader) {
     const data = await api('getAll');
     state.leads = (data.leads || []).map(normalizeLeadLocal);
     state.payments = (data.payments || []).map(normalizePaymentLocal);
-    state.payouts = data.payouts || [];
+    state.payouts = (data.payouts || []).map(normalizePayoutLocal);
     state.settings = data.settings || [];
     state.loaded = true;
     persistState();
@@ -140,7 +155,7 @@ async function loadAll(showFullLoader) {
 }
 
 function getDirections() { const seen = []; state.settings.forEach(s => { if (!seen.includes(s.direction)) seen.push(s.direction); }); return seen; }
-function getTariffs(direction) { return state.settings.filter(s => s.direction === direction).sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0)); }
+function getTariffs(direction) { return state.settings.filter(s => s.direction === direction).sort((a, b) => toNum(a.order) - toNum(b.order)); }
 function getSetting(direction, tariff) { return state.settings.find(s => s.direction === direction && s.tariff === tariff); }
 
 function leadById(id) { return state.leads.find(l => l.id === id); }
@@ -153,21 +168,21 @@ function paymentMonth(p, lead) {
 }
 
 function actualPaidTotal(leadId) {
-  return leadPayments(leadId).filter(p => !p.cancelled).reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  return leadPayments(leadId).filter(p => !p.cancelled).reduce((s, p) => s + toNum(p.amount), 0);
 }
 
 function actualPaidInMonth(lead, targetMonth) {
   if (!lead || lead.cancelled) return 0;
   const valid = leadPayments(lead.id).filter(p => !p.cancelled);
-  if (!targetMonth) return valid.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  if (!targetMonth) return valid.reduce((s, p) => s + toNum(p.amount), 0);
   return valid
     .filter(p => paymentMonth(p, lead) === targetMonth)
-    .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    .reduce((s, p) => s + toNum(p.amount), 0);
 }
 
 function leadPaidTotal(lead, targetMonth) {
   if (!lead || lead.cancelled) return 0;
-  const price = Number(lead.price) || 0;
+  const price = toNum(lead.price);
   if (lead.status === 'Оплачено повністю (договір)') {
     const m2 = shiftMonth(lead.month, 1);
     if (targetMonth) {
@@ -183,7 +198,7 @@ function leadPaidTotal(lead, targetMonth) {
 
 function leadRemaining(lead, targetMonth) {
   if (!lead || lead.cancelled) return 0;
-  const price = Number(lead.price) || 0;
+  const price = toNum(lead.price);
   if (lead.status === 'Оплачено повністю (договір)') {
     const m2 = shiftMonth(lead.month, 1);
     const refMonth = targetMonth || state.currentMonth || monthKey(new Date());
@@ -200,8 +215,8 @@ function leadClientPotential(lead) {
 
 function leadCommissionFact(lead, targetMonth) {
   if (!lead || lead.cancelled) return 0;
-  const pct = (Number(lead.commissionPercent) || 0) / 100;
-  const price = Number(lead.price) || 0;
+  const pct = toNum(lead.commissionPercent) / 100;
+  const price = toNum(lead.price);
 
   if (lead.status === 'Оплачено повністю (договір)') {
     const totalCommission = price * pct;
@@ -221,13 +236,13 @@ function leadCommissionPotential(lead, targetMonth) {
   if (!lead || lead.cancelled) return 0;
   if (lead.status === 'Оплачено повністю (договір)') return 0;
   if (targetMonth && lead.month !== targetMonth) return 0;
-  return leadRemaining(lead) * ((Number(lead.commissionPercent) || 0) / 100);
+  return leadRemaining(lead) * (toNum(lead.commissionPercent) / 100);
 }
 
 function computeStatusByPaidAmount(status, price, paid) {
   if (status === 'Оплачено повністю (договір)') return 'Оплачено повністю (договір)';
-  const numPrice = Number(price) || 0;
-  const numPaid = Number(paid) || 0;
+  const numPrice = toNum(price);
+  const numPaid = toNum(paid);
   if (numPrice > 0 && numPaid >= numPrice) return 'Оплачено повністю';
   if (numPaid >= BRON_THRESHOLD_EUR) return 'Часткова оплата';
   return 'Бронь';
@@ -281,7 +296,7 @@ function computeDashboard() {
   const myFactAllTime = activeLeads.reduce((s, l) => s + leadCommissionFact(l), 0);
   const myPotentialFull = activeLeads.reduce((s, l) => s + leadCommissionPotential(l), 0);
 
-  const expectedPayout = myFactAllTime - state.payouts.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const expectedPayout = myFactAllTime - state.payouts.reduce((s, p) => s + toNum(p.amount), 0);
 
   const today = new Date();
   const [selYear, selMonth] = state.currentMonth.split('-').map(Number);
@@ -296,7 +311,6 @@ function computeDashboard() {
     daysPassed = 1;
   }
 
-  // Прогноз бере суму виключно з нових оплат та доплат у цьому місяці (без минулих договорів і без боргів)
   const forecastEUR = (myFactNewMonth / daysPassed) * daysInMonth;
 
   return {
@@ -395,24 +409,24 @@ function renderSummaryText() {
     if (!lead || lead.cancelled || lead.status === 'Оплачено повністю (договір)') return;
     const pDate = String(p.date || lead.createdDate || '');
     if (pDate >= fromDateStr && pDate <= toDateStr) {
-      myFact += (Number(p.amount) || 0) * ((Number(lead.commissionPercent) || 0) / 100);
+      myFact += toNum(p.amount) * (toNum(lead.commissionPercent) / 100);
     }
   });
 
   periodLeads.forEach(l => {
     if (l.status === 'Оплачено повністю (договір)') {
       contractCount++;
-      const totalCommission = (Number(l.price) || 0) * ((Number(l.commissionPercent) || 0) / 100);
+      const totalCommission = toNum(l.price) * (toNum(l.commissionPercent) / 100);
       myFact += totalCommission / 2;
       contractThisMonth += totalCommission / 2;
       contractNextMonth += totalCommission / 2;
     } else {
-      myPotential += leadRemaining(l) * ((Number(l.commissionPercent) || 0) / 100);
+      myPotential += leadRemaining(l) * (toNum(l.commissionPercent) / 100);
     }
   });
 
   carryOverLeads.forEach(l => {
-    const totalCommission = (Number(l.price) || 0) * ((Number(l.commissionPercent) || 0) / 100);
+    const totalCommission = toNum(l.price) * (toNum(l.commissionPercent) / 100);
     myFact += totalCommission / 2;
     carryOverAmount += totalCommission / 2;
   });
@@ -497,7 +511,7 @@ function renderDealsTable() {
       const aNumExact = String(a.number) === cleanQ ? 1 : 0;
       const bNumExact = String(b.number) === cleanQ ? 1 : 0;
       if (aNumExact !== bNumExact) return bNumExact - aNumExact;
-      return String(b.createdDate || '').localeCompare(String(a.createdDate || '')) || (Number(b.number) || 0) - (Number(a.number) || 0);
+      return String(b.createdDate || '').localeCompare(String(a.createdDate || '')) || toNum(b.number) - toNum(a.number);
     });
 
     if (list.length === 0) { tbody.innerHTML = `<tr><td colspan="11" class="empty-row">Нічого не знайдено</td></tr>`; return; }
@@ -507,7 +521,7 @@ function renderDealsTable() {
 
   const thisMonth = state.leads
     .filter(l => l.month === state.currentMonth)
-    .sort((a, b) => String(b.createdDate || '').localeCompare(String(a.createdDate || '')) || (Number(b.number) || 0) - (Number(a.number) || 0));
+    .sort((a, b) => String(b.createdDate || '').localeCompare(String(a.createdDate || '')) || toNum(b.number) - toNum(a.number));
 
   const prevMonthExtra = state.leads
     .filter(l => {
@@ -516,7 +530,7 @@ function renderDealsTable() {
       const isDoplataInMonth = l.status !== 'Оплачено повністю (договір)' && actualPaidInMonth(l, state.currentMonth) > 0;
       return isContractCarry || isDoplataInMonth;
     })
-    .sort((a, b) => String(b.createdDate || '').localeCompare(String(a.createdDate || '')) || (Number(b.number) || 0) - (Number(a.number) || 0));
+    .sort((a, b) => String(b.createdDate || '').localeCompare(String(a.createdDate || '')) || toNum(b.number) - toNum(a.number));
 
   if (thisMonth.length === 0 && prevMonthExtra.length === 0) {
     tbody.innerHTML = `<tr><td colspan="11" class="empty-row">У цьому місяці ще немає лідів</td></tr>`;
@@ -534,19 +548,38 @@ function renderDealsTable() {
 function renderPayoutsTable() {
   const tbody = document.getElementById('payoutsBody');
   const list = state.payouts.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  if (list.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="empty-row">Виплат ще не було</td></tr>`; return; }
-  tbody.innerHTML = list.map(p => `
+  if (list.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="empty-row">Виплат ще не було</td></tr>`; return; }
+  tbody.innerHTML = list.map(p => {
+    const baseUAH = Math.round(toNum(p.amount) * UAH_RATE * 100) / 100;
+    const bonusUAH = toNum(p.bonus);
+    const extraPct = toNum(p.extraPercent);
+    const extraUAH = toNum(p.extraAmount);
+    const totalUAH = baseUAH + bonusUAH + extraUAH;
+
+    let extraHtml = '—';
+    if (extraUAH > 0 || extraPct > 0) {
+      extraHtml = `${extraUAH > 0 ? '+ ' + fmtUAH(extraUAH) : ''}${extraPct > 0 ? `<div style="font-size: 11px; color: var(--text-muted); margin-top: 3px;">Доп. ${extraPct}%</div>` : ''}`;
+    }
+
+    return `
     <tr data-id="${esc(p.id)}">
       <td class="mono muted">${esc(p.date)}</td>
       <td class="mono positive">
-        ${fmtUAH(p.amount * UAH_RATE)}
+        ${fmtUAH(baseUAH)}
         <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 4px;">≈ ${fmtEUR(p.amount)}</div>
       </td>
-      <td class="mono accent">${p.bonus > 0 ? '+ ' + fmtUAH(p.bonus) : '—'}</td>
+      <td class="mono accent">${bonusUAH > 0 ? '+ ' + fmtUAH(bonusUAH) : '—'}</td>
+      <td class="mono accent">${extraHtml}</td>
+      <td class="mono" style="font-weight:700; color:var(--text);">${fmtUAH(totalUAH)}</td>
       <td style="text-align:left;">${esc(p.comment)}</td>
-      <td><button class="btn btn--tiny btn--danger del-payout">Видалити</button></td>
-    </tr>
-  `).join('');
+      <td>
+        <div style="display:flex; gap:6px; justify-content:center;">
+          <button class="btn btn--tiny edit-payout">Редагувати</button>
+          <button class="btn btn--tiny btn--danger del-payout">Видалити</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 function renderSettings() {
@@ -599,9 +632,9 @@ function openModal(id) {
 }
 
 function calcConversion() {
-  const paymentsCount = Number(document.getElementById('cvPaymentsCount').value) || 0;
-  const knownPercent = Number(document.getElementById('cvConversionPercent').value) || 0;
-  const confirmedCount = Number(document.getElementById('cvConfirmedCount').value) || 0;
+  const paymentsCount = toNum(document.getElementById('cvPaymentsCount').value);
+  const knownPercent = toNum(document.getElementById('cvConversionPercent').value);
+  const confirmedCount = toNum(document.getElementById('cvConfirmedCount').value);
 
   if (paymentsCount <= 0) { toast('Вкажи кількість оплат', true); return; }
   if (knownPercent <= 0) { toast('Вкажи відому конверсію, %', true); return; }
@@ -639,12 +672,12 @@ function getSelectedAddLeadPrice() {
   const direction = document.getElementById('fDirection').value;
   const tariff = document.getElementById('fTariff').value;
   const s = getSetting(direction, tariff);
-  let price = s ? Number(s.price1) || 0 : 0;
+  let price = s ? toNum(s.price1) : 0;
   if (document.getElementById('fCustomPriceToggle').checked) {
-    price = Number(document.getElementById('fCustomPrice').value) || 0;
+    price = toNum(document.getElementById('fCustomPrice').value);
   } else {
     const checked = document.querySelector('input[name="fPriceOpt"]:checked');
-    if (checked) price = Number(checked.value) || 0;
+    if (checked) price = toNum(checked.value);
   }
   return price;
 }
@@ -658,7 +691,6 @@ document.getElementById('fStatus').addEventListener('change', e => {
   }
 });
 
-// ЗБЕРЕЖЕННЯ НОВОГО ЛІДА: Спочатку в Таблицю -> Після успіху в Локал
 document.getElementById('btnSaveLead').addEventListener('click', async () => {
   const clientName = document.getElementById('fClientName').value.trim();
   const nickname = document.getElementById('fNickname').value.trim();
@@ -669,7 +701,7 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
 
   const price = getSelectedAddLeadPrice();
   const rawStatus = document.getElementById('fStatus').value;
-  let firstPayment = Number(document.getElementById('fFirstPayment').value) || 0;
+  let firstPayment = toNum(document.getElementById('fFirstPayment').value);
   if (rawStatus === 'Оплачено повністю' && firstPayment <= 0 && price > 0) {
     firstPayment = price;
   }
@@ -682,7 +714,7 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
   const comment = document.getElementById('fComment').value.trim();
   const leadId = genId('local');
   const paymentId = firstPayment > 0 ? genId('local-pay') : null;
-  const commissionPercent = Number(s ? s.percent : 0);
+  const commissionPercent = toNum(s ? s.percent : 0);
 
   showLoader('Збереження в таблицю...');
   try {
@@ -711,7 +743,7 @@ document.getElementById('btnSaveLead').addEventListener('click', async () => {
       });
     }
 
-    const assignedNumber = (res && res.number) ? Number(res.number) : (Math.max(0, ...state.leads.map(l => Number(l.number) || 0)) + 1);
+    const assignedNumber = (res && res.number) ? toNum(res.number) : (Math.max(0, ...state.leads.map(l => toNum(l.number))) + 1);
     const confirmedLead = normalizeLeadLocal({
       id: leadId,
       number: assignedNumber,
@@ -764,6 +796,7 @@ function openLeadDetail(id) {
   document.getElementById('ldClientName').value = lead.clientName || '';
   document.getElementById('ldNickname').value = lead.nickname || '';
   document.getElementById('ldPrice').value = lead.price;
+  document.getElementById('ldCommissionPercent').value = lead.commissionPercent;
   document.getElementById('ldStatus').value = lead.status === 'Оплачено повністю (договір)' ? 'Оплачено повністю (договір)' : computeLeadStatusFromPaid(lead);
   document.getElementById('ldComment').value = lead.comment || '';
   document.getElementById('ldCancelled').checked = !!lead.cancelled;
@@ -774,7 +807,7 @@ function openLeadDetail(id) {
 
 function renderLeadDetailSummary(lead) {
   const factEUR = leadCommissionFact(lead);
-  const fullCommissionEUR = (Number(lead.price) || 0) * ((Number(lead.commissionPercent) || 0) / 100);
+  const fullCommissionEUR = toNum(lead.price) * (toNum(lead.commissionPercent) / 100);
   const paid = leadPaidTotal(lead);
 
   const tariffHTML = `<div style="font-weight:400; color:var(--text-muted); font-family:var(--font-body); line-height:1.3; text-align:center; white-space:normal; width:100%; word-break:break-word;">${esc(lead.direction)}<br><span style="color:var(--text); font-weight:700;">${esc(lead.tariff)}</span> <span style="font-size: 10px; color: var(--gold);">(${lead.commissionPercent}%)</span></div>`;
@@ -813,13 +846,13 @@ function renderLeadPayments(lead) {
   tbody.innerHTML = list.map((p, i) => `<tr class="${p.cancelled ? 'row--cancelled' : ''}" data-id="${esc(p.id)}"><td class="mono muted">${esc(p.date)}</td><td class="mono ${p.cancelled ? 'muted' : 'positive'}">${fmtEUR(p.amount)}</td><td style="text-align:left;">${esc(p.comment || ('Платіж ' + (i + 1)))}</td><td><span class="badge ${p.cancelled ? 'badge--red' : 'badge--green'}">${p.cancelled ? 'Скасовано' : 'Зараховано'}</span></td><td><div style="display:flex;gap:6px;justify-content:center;"><button class="btn btn--tiny toggle-payment">${p.cancelled ? 'Відновити' : 'Скасувати'}</button><button class="btn btn--tiny btn--danger delete-payment" title="Видалити повністю" style="padding:4px 8px;font-size:14px;line-height:1;">✕</button></div></td></tr>`).join('');
 }
 
-// РЕДАГУВАННЯ ЛІДА: Спочатку в Таблицю -> Після успіху в Локал
 document.getElementById('btnSaveLeadEdit').addEventListener('click', async () => {
   const id = state.activeLeadId;
   const lead = leadById(id);
   if (!lead) return;
 
-  const newPrice = Number(document.getElementById('ldPrice').value) || 0;
+  const newPrice = toNum(document.getElementById('ldPrice').value);
+  const newCommissionPercent = toNum(document.getElementById('ldCommissionPercent').value);
   const selectedStatus = document.getElementById('ldStatus').value;
   const currentPaid = actualPaidTotal(lead.id);
 
@@ -848,6 +881,7 @@ document.getElementById('btnSaveLeadEdit').addEventListener('click', async () =>
     clientName: document.getElementById('ldClientName').value.trim(),
     nickname: document.getElementById('ldNickname').value.trim(),
     price: newPrice,
+    commissionPercent: newCommissionPercent,
     status: finalStatus,
     comment: document.getElementById('ldComment').value.trim(),
     cancelled: document.getElementById('ldCancelled').checked
@@ -885,7 +919,6 @@ document.getElementById('btnSaveLeadEdit').addEventListener('click', async () =>
   }
 });
 
-// ВИДАЛЕННЯ ЛІДА: Спочатку в Таблицю -> Після успіху з Локалу
 document.getElementById('btnDeleteLead').addEventListener('click', async () => {
   const id = state.activeLeadId;
   if (!confirm('Видалити цей лід і всі його платежі назавжди?')) return;
@@ -906,7 +939,6 @@ document.getElementById('btnDeleteLead').addEventListener('click', async () => {
   }
 });
 
-// СКАСУВАННЯ / ВИДАЛЕННЯ ПЛАТЕЖУ: Спочатку в Таблицю -> Після успіху в Локал
 document.getElementById('ldPaymentsBody').addEventListener('click', async e => {
   const row = e.target.closest('tr');
   if (!row) return;
@@ -920,7 +952,7 @@ document.getElementById('ldPaymentsBody').addEventListener('click', async e => {
     const nextCancelled = !payment.cancelled;
     const newPaid = leadPayments(lead.id)
       .filter(p => (p.id === id ? !nextCancelled : !p.cancelled))
-      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      .reduce((s, p) => s + toNum(p.amount), 0);
     const nextStatus = computeStatusByPaidAmount(lead.status, lead.price, newPaid);
 
     showLoader('Збереження в таблицю...');
@@ -954,7 +986,7 @@ document.getElementById('ldPaymentsBody').addEventListener('click', async e => {
     if (!confirm('Видалити цей платіж назавжди?')) return;
     const newPaid = leadPayments(lead.id)
       .filter(p => p.id !== id && !p.cancelled)
-      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      .reduce((s, p) => s + toNum(p.amount), 0);
     const nextStatus = computeStatusByPaidAmount(lead.status, lead.price, newPaid);
 
     showLoader('Видалення з таблиці...');
@@ -995,9 +1027,8 @@ document.getElementById('btnAddPayment').addEventListener('click', () => {
   openModal('modalAddPayment');
 });
 
-// НОВА ОПЛАТА / ДОПЛАТА: Спочатку в Таблицю -> Після успіху в Локал
 document.getElementById('btnSavePayment').addEventListener('click', async () => {
-  const amount = Number(document.getElementById('pAmount').value) || 0;
+  const amount = toNum(document.getElementById('pAmount').value);
   const date = document.getElementById('pDate').value || todayStr();
   const comment = document.getElementById('pComment').value.trim();
   if (amount <= 0) { toast('Вкажи суму', true); return; }
@@ -1048,30 +1079,101 @@ document.getElementById('btnSavePayment').addEventListener('click', async () => 
   }
 });
 
+function updatePayoutTotalPreview() {
+  const baseUAH = toNum(document.getElementById('oAmountUAH').value);
+  const bonusUAH = toNum(document.getElementById('oBonusUAH').value);
+  const extraUAH = toNum(document.getElementById('oExtraAmountUAH').value);
+  const extraPct = toNum(document.getElementById('oExtraPercent').value);
+  const total = baseUAH + bonusUAH + extraUAH;
+  const el = document.getElementById('oTotalPreview');
+  if (el) {
+    el.textContent = fmtUAH(total) + (extraPct > 0 ? ` (вкл. ${extraPct}%)` : '');
+  }
+}
+
+['oAmountUAH', 'oBonusUAH', 'oExtraPercent', 'oExtraAmountUAH'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updatePayoutTotalPreview);
+});
+
 document.getElementById('btnAddPayout').addEventListener('click', () => {
+  state.editingPayoutId = null;
+  document.getElementById('payoutModalTitle').textContent = 'Нова виплата ЗП';
   document.getElementById('oAmountUAH').value = '';
   document.getElementById('oBonusUAH').value = '0';
+  document.getElementById('oExtraPercent').value = '0';
+  document.getElementById('oExtraAmountUAH').value = '0';
   document.getElementById('oDate').value = todayStr();
   document.getElementById('oComment').value = '';
+  updatePayoutTotalPreview();
   openModal('modalAddPayout');
 });
 
-// ДОДАВАННЯ ВИПЛАТИ ЗП: Спочатку в Таблицю -> Після успіху в Локал
+function openEditPayout(id) {
+  const p = state.payouts.find(x => x.id === id);
+  if (!p) return;
+  state.editingPayoutId = id;
+  document.getElementById('payoutModalTitle').textContent = 'Редагувати виплату ЗП';
+  const baseUAH = Math.round(toNum(p.amount) * UAH_RATE * 100) / 100;
+  document.getElementById('oAmountUAH').value = baseUAH > 0 ? String(baseUAH) : '0';
+  document.getElementById('oBonusUAH').value = String(toNum(p.bonus));
+  document.getElementById('oExtraPercent').value = String(toNum(p.extraPercent));
+  document.getElementById('oExtraAmountUAH').value = String(toNum(p.extraAmount));
+  document.getElementById('oDate').value = p.date || todayStr();
+  document.getElementById('oComment').value = p.comment || '';
+  updatePayoutTotalPreview();
+  openModal('modalAddPayout');
+}
+
 document.getElementById('btnSavePayout').addEventListener('click', async () => {
-  const amountUAH = Number(document.getElementById('oAmountUAH').value) || 0;
-  const bonusUAH = Number(document.getElementById('oBonusUAH').value) || 0;
+  const amountUAH = toNum(document.getElementById('oAmountUAH').value);
+  const bonusUAH = toNum(document.getElementById('oBonusUAH').value);
+  const extraPercent = toNum(document.getElementById('oExtraPercent').value);
+  const extraAmountUAH = toNum(document.getElementById('oExtraAmountUAH').value);
   const date = document.getElementById('oDate').value || todayStr();
   const comment = document.getElementById('oComment').value.trim();
 
-  if (amountUAH <= 0 && bonusUAH <= 0) { toast('Вкажи суму ЗП або бонус', true); return; }
+  if (amountUAH <= 0 && bonusUAH <= 0 && extraAmountUAH <= 0) {
+    toast('Вкажи суму ЗП, бонус або суму доп. %', true);
+    return;
+  }
 
   const amountEUR = amountUAH / UAH_RATE;
-  const payoutId = genId('local-out');
 
   showLoader('Збереження в таблицю...');
   try {
-    await api('addPayout', { id: payoutId, amount: amountEUR, bonus: bonusUAH, date, comment });
-    state.payouts.push({ id: payoutId, amount: amountEUR, bonus: bonusUAH, date, comment });
+    if (state.editingPayoutId) {
+      const payload = {
+        id: state.editingPayoutId,
+        amount: amountEUR,
+        bonus: bonusUAH,
+        extraPercent,
+        extraAmount: extraAmountUAH,
+        date,
+        comment
+      };
+      await api('updatePayout', payload);
+      const target = state.payouts.find(x => x.id === state.editingPayoutId);
+      if (target) {
+        Object.assign(target, payload);
+        normalizePayoutLocal(target);
+      }
+    } else {
+      const payoutId = genId('local-out');
+      const payload = {
+        id: payoutId,
+        amount: amountEUR,
+        bonus: bonusUAH,
+        extraPercent,
+        extraAmount: extraAmountUAH,
+        date,
+        comment
+      };
+      await api('addPayout', payload);
+      state.payouts.push(normalizePayoutLocal(payload));
+    }
+
+    state.editingPayoutId = null;
     persistState();
     renderAll();
     closeModal('modalAddPayout');
@@ -1083,37 +1185,43 @@ document.getElementById('btnSavePayout').addEventListener('click', async () => {
   }
 });
 
-// ВИДАЛЕННЯ ВИПЛАТИ ЗП: Спочатку в Таблицю -> Після успіху з Локалу
 document.getElementById('payoutsBody').addEventListener('click', async e => {
-  if (!e.target.classList.contains('del-payout')) return;
-  const id = e.target.closest('tr').getAttribute('data-id');
-  if (!confirm('Видалити цю виплату?')) return;
+  const row = e.target.closest('tr');
+  if (!row) return;
+  const id = row.getAttribute('data-id');
 
-  showLoader('Видалення з таблиці...');
-  try {
-    await api('deletePayout', { id });
-    state.payouts = state.payouts.filter(p => p.id !== id);
-    persistState();
-    renderAll();
-    toast('Успішно видалено!');
-  } catch (err) {
-    toast('Не вдалося видалити: ' + err.message, true);
-  } finally {
-    hideLoader();
+  if (e.target.classList.contains('edit-payout')) {
+    openEditPayout(id);
+    return;
+  }
+
+  if (e.target.classList.contains('del-payout')) {
+    if (!confirm('Видалити цю виплату?')) return;
+    showLoader('Видалення з таблиці...');
+    try {
+      await api('deletePayout', { id });
+      state.payouts = state.payouts.filter(p => p.id !== id);
+      persistState();
+      renderAll();
+      toast('Успішно видалено!');
+    } catch (err) {
+      toast('Не вдалося видалити: ' + err.message, true);
+    } finally {
+      hideLoader();
+    }
   }
 });
 
-// ЗБЕРЕЖЕННЯ НАЛАШТУВАНЬ ТАРИФІВ: Спочатку в Таблицю -> Після успіху в Локал
 document.getElementById('settingsGroups').addEventListener('click', async e => {
   if (!e.target.classList.contains('save-settings-row')) return;
   const row = e.target.closest('tr');
   const payload = {
     direction: row.getAttribute('data-direction'),
     tariff: row.getAttribute('data-tariff'),
-    price1: Number(row.querySelector('.s-price1').value) || 0,
-    price2: Number(row.querySelector('.s-price2').value) || 0,
-    price3: Number(row.querySelector('.s-price3').value) || 0,
-    percent: Number(row.querySelector('.s-percent').value) || 0
+    price1: toNum(row.querySelector('.s-price1').value),
+    price2: toNum(row.querySelector('.s-price2').value),
+    price3: toNum(row.querySelector('.s-price3').value),
+    percent: toNum(row.querySelector('.s-percent').value)
   };
 
   showLoader('Збереження в таблицю...');

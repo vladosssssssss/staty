@@ -1,7 +1,7 @@
 var SHEET_LEADS = 'Leads'; var SHEET_PAYMENTS = 'Payments'; var SHEET_PAYOUTS = 'Payouts'; var SHEET_SETTINGS = 'Settings';
 var LEADS_HEADERS = ['id','number','clientName','nickname','direction','tariff','price','commissionPercent','status','comment','createdDate','month','cancelled'];
 var PAYMENTS_HEADERS = ['id','leadId','amount','date','comment','cancelled'];
-var PAYOUTS_HEADERS = ['id','date','amount','comment','bonus'];
+var PAYOUTS_HEADERS = ['id','date','amount','comment','bonus','extraPercent','extraAmount'];
 var SETTINGS_HEADERS = ['direction','tariff','price1','price2','price3','percent','order'];
 
 var DEFAULT_SETTINGS = [
@@ -10,6 +10,11 @@ var DEFAULT_SETTINGS = [
   ['Big Money', 'Стандарт', 4990, 2990, 2490, 8, 1], ['Big Money', 'Поглиблений', 6990, 5990, 4490, 7, 2], ['Big Money', 'Менторство', 17990, 16490, 14990, 5, 3],
   ['Офлайн робота', 'Базовий', 1090, 890, 790, 6, 1], ['Офлайн робота', 'Бізнес', 1390, 1190, 990, 7, 2], ['Офлайн робота', 'Персональний', 3290, 2490, 2190, 8, 3]
 ];
+
+function parseNum_(v) {
+  if (typeof v === 'number') return isNaN(v) ? 0 : v;
+  return Number(String(v == null ? '' : v).replace(',', '.').replace(/\s+/g, '')) || 0;
+}
 
 function doGet(e) { try { ensureSheets_(); return jsonOut_({ ok: true, data: getAllData_() }); } catch (err) { return jsonOut_({ ok: false, error: String(err) }); } }
 function doPost(e) {
@@ -26,13 +31,36 @@ function doPost(e) {
 
 function jsonOut_(obj) { return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON); }
 function ensureSheets_() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet(); function checkAndCreate(name, headers) { var sh = ss.getSheetByName(name); if (!sh) { sh = ss.insertSheet(name); sh.appendRow(headers); sh.setFrozenRows(1); } return sh; }
-  var leads = checkAndCreate(SHEET_LEADS, LEADS_HEADERS); var payments = checkAndCreate(SHEET_PAYMENTS, PAYMENTS_HEADERS); var payouts = checkAndCreate(SHEET_PAYOUTS, PAYOUTS_HEADERS); var settings = checkAndCreate(SHEET_SETTINGS, SETTINGS_HEADERS);
-  ensureDefaultSettingsPresent_(settings); var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('Аркуш1'); if (def && def.getLastRow() === 0) ss.deleteSheet(def);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  function checkAndCreate(name, headers) {
+    var sh = ss.getSheetByName(name);
+    if (!sh) {
+      sh = ss.insertSheet(name);
+      sh.appendRow(headers);
+      sh.setFrozenRows(1);
+    } else if (sh.getLastRow() >= 1) {
+      var currentHeaders = sh.getRange(1, 1, 1, headers.length).getValues()[0];
+      var changed = false;
+      for (var i = 0; i < headers.length; i++) {
+        if (String(currentHeaders[i]) !== headers[i]) {
+          currentHeaders[i] = headers[i];
+          changed = true;
+        }
+      }
+      if (changed) sh.getRange(1, 1, 1, headers.length).setValues([currentHeaders]);
+    }
+    return sh;
+  }
+  var leads = checkAndCreate(SHEET_LEADS, LEADS_HEADERS);
+  var payments = checkAndCreate(SHEET_PAYMENTS, PAYMENTS_HEADERS);
+  var payouts = checkAndCreate(SHEET_PAYOUTS, PAYOUTS_HEADERS);
+  var settings = checkAndCreate(SHEET_SETTINGS, SETTINGS_HEADERS);
+  ensureDefaultSettingsPresent_(settings);
+  var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('Аркуш1');
+  if (def && def.getLastRow() === 0) ss.deleteSheet(def);
   ensureTextFormatOnce_(leads, payments, payouts);
 }
-// Додає в лист "Settings" ті напрямки/тарифи з DEFAULT_SETTINGS, яких там ще немає.
-// Ніколи не чіпає і не перезаписує вже наявні рядки (навіть якщо ціни там були вручну змінені).
+
 function ensureDefaultSettingsPresent_(sh) {
   var lastRow = sh.getLastRow(); var existing = {};
   if (lastRow >= 2) {
@@ -41,11 +69,7 @@ function ensureDefaultSettingsPresent_(sh) {
   }
   DEFAULT_SETTINGS.forEach(function(row) { var key = String(row[0]) + '||' + String(row[1]); if (!existing[key]) sh.appendRow(row); });
 }
-// ФІКС ШВИДКОСТІ: раніше форматування колонок з датами як текст (@) виконувалось на ~2000+ рядках
-// одразу трьох листів ПРИ КОЖНОМУ запиті (кожному відкритті сайту, кожному доданні ліда/платежу/виплати) —
-// саме це й було головною причиною, чому все довго "грузилось". Тепер це робиться лише ОДИН РАЗ
-// (позначка зберігається в Script Properties), а нові рядки форматуються точково, одразу при записі,
-// у addLead_ / addPayment_ / addPayout_ нижче.
+
 function ensureTextFormatOnce_(leads, payments, payouts) {
   var props = PropertiesService.getScriptProperties();
   if (props.getProperty('textFormatMigrationDone_v1') === '1') return;
@@ -59,21 +83,18 @@ function sheetToObjects_(sheetName, headers) {
   for (var i = 0; i < values.length; i++) { if (values[i].join('') === '') continue; var obj = { _row: i + 2 }; for (var j = 0; j < headers.length; j++) obj[headers[j]] = values[i][j]; out.push(obj); } return out;
 }
 function getAllData_() { return { leads: sheetToObjects_(SHEET_LEADS, LEADS_HEADERS).map(normalizeLead_), payments: sheetToObjects_(SHEET_PAYMENTS, PAYMENTS_HEADERS).map(normalizePayment_), payouts: sheetToObjects_(SHEET_PAYOUTS, PAYOUTS_HEADERS).map(normalizePayout_), settings: sheetToObjects_(SHEET_SETTINGS, SETTINGS_HEADERS) }; }
-function normalizeLead_(l) { l.number = Number(l.number) || 0; l.price = Number(l.price) || 0; l.commissionPercent = Number(l.commissionPercent) || 0; l.cancelled = (String(l.cancelled).toLowerCase() === 'true'); l.createdDate = formatDate_(l.createdDate); l.month = l.createdDate ? l.createdDate.substring(0, 7) : String(l.month || '').substring(0, 7); return l; }
-function normalizePayment_(p) { p.amount = Number(p.amount) || 0; p.cancelled = (String(p.cancelled).toLowerCase() === 'true'); p.date = formatDate_(p.date); return p; }
-function normalizePayout_(p) { p.amount = Number(p.amount) || 0; p.bonus = Number(p.bonus) || 0; p.date = formatDate_(p.date); return p; }
+function normalizeLead_(l) { l.number = parseNum_(l.number); l.price = parseNum_(l.price); l.commissionPercent = parseNum_(l.commissionPercent); l.cancelled = (String(l.cancelled).toLowerCase() === 'true'); l.createdDate = formatDate_(l.createdDate); l.month = l.createdDate ? l.createdDate.substring(0, 7) : String(l.month || '').substring(0, 7); return l; }
+function normalizePayment_(p) { p.amount = parseNum_(p.amount); p.cancelled = (String(p.cancelled).toLowerCase() === 'true'); p.date = formatDate_(p.date); return p; }
+function normalizePayout_(p) { p.amount = parseNum_(p.amount); p.bonus = parseNum_(p.bonus); p.extraPercent = parseNum_(p.extraPercent); p.extraAmount = parseNum_(p.extraAmount); p.date = formatDate_(p.date); return p; }
 function formatDate_(d) { if (!d) return ''; if (Object.prototype.toString.call(d) === '[object Date]') return Utilities.formatDate(d, Session.getScriptTimeZone() || 'Europe/Kyiv', 'yyyy-MM-dd'); return String(d).substring(0, 10); }
 
 function findRowById_(sheetName, headers, id) { var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName); var lastRow = sh.getLastRow(); if (lastRow < 2) return null; var ids = sh.getRange(2, 1, lastRow - 1, 1).getValues(); for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === String(id)) return { sheet: sh, row: i + 2 }; return null; }
-function nextLeadNumber_(sh) { var lastRow = sh.getLastRow(); if (lastRow < 2) return 1; var nums = sh.getRange(2, 2, lastRow - 1, 1).getValues(); var max = 0; for (var i = 0; i < nums.length; i++) max = Math.max(max, Number(nums[i][0]) || 0); return max + 1; }
+function nextLeadNumber_(sh) { var lastRow = sh.getLastRow(); if (lastRow < 2) return 1; var nums = sh.getRange(2, 2, lastRow - 1, 1).getValues(); var max = 0; for (var i = 0; i < nums.length; i++) max = Math.max(max, parseNum_(nums[i][0])); return max + 1; }
 
 function addLead_(p) {
   var lock = LockService.getScriptLock(); lock.waitLock(10000);
   try {
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_LEADS);
-    // Ідемпотентність: якщо клієнт вже присилав саме цей id (напр. повторна спроба після
-    // мережевого збою, коли перший запит насправді таки дійшов) — не створюємо дубль,
-    // а повертаємо вже наявний запис.
     if (p.id) {
       var already = findRowById_(SHEET_LEADS, LEADS_HEADERS, p.id);
       if (already) {
@@ -83,8 +104,8 @@ function addLead_(p) {
     }
     var id = p.id || Utilities.getUuid(); var number = nextLeadNumber_(sh); var date = p.createdDate || formatDate_(new Date());
     var rowIndex = sh.getLastRow() + 1;
-    sh.appendRow([id, number, p.clientName || '', p.nickname || '', p.direction || '', p.tariff || '', Number(p.price) || 0, Number(p.commissionPercent) || 0, p.status || 'Бронь', p.comment || '', date, date.substring(0, 7), false]);
-    sh.getRange(rowIndex, 11, 1, 2).setNumberFormat('@'); // createdDate, month — точково, тільки цей рядок
+    sh.appendRow([id, number, p.clientName || '', p.nickname || '', p.direction || '', p.tariff || '', parseNum_(p.price), parseNum_(p.commissionPercent), p.status || 'Бронь', p.comment || '', date, date.substring(0, 7), false]);
+    sh.getRange(rowIndex, 11, 1, 2).setNumberFormat('@');
     return { id: id, number: number, createdDate: date, month: date.substring(0, 7) };
   } finally { lock.releaseLock(); }
 }
@@ -120,7 +141,7 @@ function addPayment_(p) {
     }
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PAYMENTS); var id = p.id || Utilities.getUuid(); var date = p.date || formatDate_(new Date());
     var rowIndex = sh.getLastRow() + 1;
-    sh.appendRow([id, p.leadId, Number(p.amount) || 0, date, p.comment || '', false]);
+    sh.appendRow([id, p.leadId, parseNum_(p.amount), date, p.comment || '', false]);
     sh.getRange(rowIndex, 4, 1, 1).setNumberFormat('@');
     return { id: id, date: date };
   } finally { lock.releaseLock(); }
@@ -148,7 +169,7 @@ function addPayout_(p) {
     }
     var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_PAYOUTS); var id = p.id || Utilities.getUuid(); var date = p.date || formatDate_(new Date());
     var rowIndex = sh.getLastRow() + 1;
-    sh.appendRow([id, date, Number(p.amount) || 0, p.comment || '', Number(p.bonus) || 0]);
+    sh.appendRow([id, date, parseNum_(p.amount), p.comment || '', parseNum_(p.bonus), parseNum_(p.extraPercent), parseNum_(p.extraAmount)]);
     sh.getRange(rowIndex, 2, 1, 1).setNumberFormat('@');
     return { id: id, date: date };
   } finally { lock.releaseLock(); }
@@ -158,7 +179,11 @@ function updatePayout_(p) {
   try {
     var found = findRowById_(SHEET_PAYOUTS, PAYOUTS_HEADERS, p.id); if (!found) throw new Error('Виплату не знайдено');
     var rowRange = found.sheet.getRange(found.row, 1, 1, PAYOUTS_HEADERS.length); var rowValues = rowRange.getValues()[0];
-    ['amount','date','comment','bonus'].forEach(function(field) { if (p.hasOwnProperty(field)) rowValues[PAYOUTS_HEADERS.indexOf(field)] = p[field]; });
+    ['amount','date','comment','bonus','extraPercent','extraAmount'].forEach(function(field) {
+      if (p.hasOwnProperty(field)) {
+        rowValues[PAYOUTS_HEADERS.indexOf(field)] = (field === 'date' || field === 'comment') ? p[field] : parseNum_(p[field]);
+      }
+    });
     rowRange.setValues([rowValues]); return { id: p.id, updated: true };
   } finally { lock.releaseLock(); }
 }
@@ -175,11 +200,11 @@ function updateSettings_(p) {
       var range = sh.getRange(2, 1, lastRow - 1, SETTINGS_HEADERS.length); var values = range.getValues();
       for (var i = 0; i < values.length; i++) {
         if (String(values[i][0]) === String(p.direction) && String(values[i][1]) === String(p.tariff)) {
-          values[i][2] = Number(p.price1) || 0; values[i][3] = Number(p.price2) || 0; values[i][4] = Number(p.price3) || 0; values[i][5] = Number(p.percent) || 0;
+          values[i][2] = parseNum_(p.price1); values[i][3] = parseNum_(p.price2); values[i][4] = parseNum_(p.price3); values[i][5] = parseNum_(p.percent);
           sh.getRange(i + 2, 1, 1, SETTINGS_HEADERS.length).setValues([values[i]]); return { updated: true };
         }
       }
     }
-    sh.appendRow([p.direction, p.tariff, Number(p.price1) || 0, Number(p.price2) || 0, Number(p.price3) || 0, Number(p.percent) || 0, 99]); return { created: true };
+    sh.appendRow([p.direction, p.tariff, parseNum_(p.price1), parseNum_(p.price2), parseNum_(p.price3), parseNum_(p.percent), 99]); return { created: true };
   } finally { lock.releaseLock(); }
 }

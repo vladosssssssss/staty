@@ -7,7 +7,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=34">
+<link rel="stylesheet" href="style.css?v=35">
 </head>
 <body>
 
@@ -28,7 +28,6 @@
       </nav>
     </div>
 
-    <!-- Акуратні кнопки повної статистики та конверсії -->
     <div style="margin: 14px 0 8px; display:flex; gap:8px; flex-wrap:wrap;">
       <button class="btn" id="btnOpenStatsTop" style="padding: 6px 14px; font-size: 13px; font-weight: 500; background: var(--surface-2); border: 1px solid var(--rule); color: var(--text); border-radius: var(--radius-sm); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
         📊 Повна статистика
@@ -39,7 +38,6 @@
     </div>
 
     <div class="ledger__figures" id="figures">
-      <!-- ГРУПА 1: ПОТОЧНИЙ МІСЯЦЬ -->
       <div class="figure-group">
         <span class="figure-group__label">Цього місяця</span>
         <div class="figure-group__row">
@@ -56,7 +54,6 @@
         </div>
       </div>
 
-      <!-- ГРУПА 2: ПІДСУМОК ТА ПРОГНОЗ -->
       <div class="figure-group">
         <span class="figure-group__label">Підсумок місяця</span>
         <div class="figure-group__row">
@@ -73,7 +70,6 @@
         </div>
       </div>
 
-      <!-- ГРУПА 3: БАЛАНС -->
       <div class="figure-group">
         <span class="figure-group__label">Баланс</span>
         <div class="figure-group__row" style="grid-template-columns: 1fr;">
@@ -134,10 +130,18 @@
     <div class="table-wrap">
       <table class="deals-table" id="payoutsTable">
         <thead>
-          <tr><th>Дата</th><th>Сума ЗП (₴)</th><th>Бонус (₴)</th><th>Коментар</th><th></th></tr>
+          <tr>
+            <th>Дата</th>
+            <th>ЗП за % (₴)</th>
+            <th>Ставка / Бонус (₴)</th>
+            <th>Доп. відсоток</th>
+            <th>Разом (₴)</th>
+            <th>Коментар</th>
+            <th></th>
+          </tr>
         </thead>
         <tbody id="payoutsBody">
-          <tr><td colspan="5" class="empty-row">Завантаження…</td></tr>
+          <tr><td colspan="7" class="empty-row">Завантаження…</td></tr>
         </tbody>
       </table>
     </div>
@@ -151,7 +155,7 @@
   </main>
 </div>
 
-<!-- Модалки додавання / редагування лідів та виплат -->
+<!-- Модалка: Новий лід -->
 <div class="modal-overlay" id="modalAddLead">
   <div class="modal">
     <div class="modal__head">
@@ -187,7 +191,7 @@
             <option value="Оплачено повністю (договір)">Оплачено повністю (договір)</option>
           </select>
         </div>
-        <div><label>Сума першого платежу, €</label><input type="number" id="fFirstPayment" placeholder="0" value="0"></div>
+        <div><label>Сума першого платежу, €</label><input type="number" id="fFirstPayment" placeholder="0" value="0" step="0.01"></div>
       </div>
       <div class="form-row form-row--split">
         <div><label>Дата</label><input type="date" id="fDate"></div>
@@ -204,6 +208,7 @@
   </div>
 </div>
 
+<!-- Модалка: Картка ліда -->
 <div class="modal-overlay" id="modalLead">
   <div class="modal modal--wide">
     <div class="modal__head">
@@ -218,16 +223,17 @@
       <div class="lead-edit-grid">
         <div class="form-row"><label>Ім’я клієнта</label><input type="text" id="ldClientName"></div>
         <div class="form-row"><label>Нік у Telegram</label><input type="text" id="ldNickname"></div>
-        <div class="form-row"><label>Ціна тарифу, €</label><input type="number" id="ldPrice"></div>
-        <div class="form-row">
-          <label>Статус</label>
-          <select id="ldStatus">
-            <option value="Бронь">Бронь</option>
-            <option value="Часткова оплата">Часткова оплата</option>
-            <option value="Оплачено повністю">Оплачено повністю</option>
-            <option value="Оплачено повністю (договір)">Оплачено повністю (договір)</option>
-          </select>
-        </div>
+        <div class="form-row"><label>Ціна тарифу, €</label><input type="number" id="ldPrice" step="0.01"></div>
+        <div class="form-row"><label>Комісія, %</label><input type="number" id="ldCommissionPercent" step="0.1"></div>
+      </div>
+      <div class="form-row">
+        <label>Статус</label>
+        <select id="ldStatus">
+          <option value="Бронь">Бронь</option>
+          <option value="Часткова оплата">Часткова оплата</option>
+          <option value="Оплачено повністю">Оплачено повністю</option>
+          <option value="Оплачено повністю (договір)">Оплачено повністю (договір)</option>
+        </select>
       </div>
       <div class="form-row"><label>Коментар</label><textarea id="ldComment" rows="2"></textarea></div>
       
@@ -254,6 +260,7 @@
   </div>
 </div>
 
+<!-- Модалка: Новий платіж -->
 <div class="modal-overlay" id="modalAddPayment">
   <div class="modal modal--small">
     <div class="modal__head">
@@ -262,7 +269,7 @@
     </div>
     <div class="modal__body">
       <div class="form-row form-row--split">
-        <div><label>Сума, €</label><input type="number" id="pAmount" placeholder="0"></div>
+        <div><label>Сума, €</label><input type="number" id="pAmount" placeholder="0" step="0.01"></div>
         <div><label>Дата</label><input type="date" id="pDate"></div>
       </div>
       <div class="form-row">
@@ -277,23 +284,47 @@
   </div>
 </div>
 
+<!-- Модалка: Додавання / Редагування виплати ЗП -->
 <div class="modal-overlay" id="modalAddPayout">
-  <div class="modal modal--small">
+  <div class="modal">
     <div class="modal__head">
-      <h3>Нова виплата ЗП</h3>
+      <h3 id="payoutModalTitle">Нова виплата ЗП</h3>
       <button class="icon-btn" data-close-modal="modalAddPayout">✕</button>
     </div>
     <div class="modal__body">
       <div class="form-row form-row--split">
-        <div><label>Сума ЗП, ₴</label><input type="number" id="oAmountUAH" placeholder="0"></div>
-        <div><label>Бонус, ₴</label><input type="number" id="oBonusUAH" placeholder="0" value="0"></div>
+        <div>
+          <label>Сума ЗП (основний %), ₴</label>
+          <input type="number" id="oAmountUAH" placeholder="Напр. 55169" step="0.01">
+        </div>
+        <div>
+          <label>Ставка / Бонус, ₴</label>
+          <input type="number" id="oBonusUAH" placeholder="Напр. 22500" value="0" step="0.01">
+        </div>
       </div>
       <div class="form-row form-row--split">
-        <div><label>Дата</label><input type="date" id="oDate"></div>
+        <div>
+          <label>Доп. відсоток, %</label>
+          <input type="number" id="oExtraPercent" placeholder="Напр. 2" value="0" step="0.1">
+        </div>
+        <div>
+          <label>Сума доп. відсотка, ₴</label>
+          <input type="number" id="oExtraAmountUAH" placeholder="Напр. 13642" value="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-row form-row--split">
+        <div>
+          <label>Дата</label>
+          <input type="date" id="oDate">
+        </div>
+        <div>
+          <label>Разом до виплати</label>
+          <div id="oTotalPreview" class="mono" style="padding: 11px 12px; background: var(--surface-3); border: 1px solid var(--rule); border-radius: var(--radius-sm); color: var(--gold); font-weight: 700;">0 ₴</div>
+        </div>
       </div>
       <div class="form-row">
         <label>Коментар</label>
-        <input type="text" id="oComment">
+        <input type="text" id="oComment" placeholder="Напр. ЗП за вересень + ставка 500$ + 2% бонус">
       </div>
     </div>
     <div class="modal__foot">
@@ -303,7 +334,7 @@
   </div>
 </div>
 
-<!-- Модалка Повної Статистики -->
+<!-- Модалка: Повна Статистика -->
 <div class="modal-overlay" id="modalStats">
   <div class="modal modal--wide">
     <div class="modal__head">
@@ -312,8 +343,6 @@
     </div>
 
     <div class="modal__body">
-      
-      <!-- Блок загальних очікувань -->
       <div style="display: flex; gap: 12px; margin-bottom: 20px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--rule);">
          <div style="flex:1;">
             <div style="font-size: 10px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Очікую з боргів (цей місяць)</div>
@@ -332,7 +361,6 @@
         <button class="md-tab" id="mdTabAll">За весь час</button>
       </div>
 
-      <!-- Вкладка Місяць -->
       <div id="mdViewMonth">
         <div class="lead-summary">
           <div class="mini-fig">
@@ -358,7 +386,6 @@
         </div>
       </div>
 
-      <!-- Вкладка Всі Часи -->
       <div id="mdViewAll" style="display:none;">
         <div class="lead-summary">
           <div class="mini-fig">
@@ -393,10 +420,7 @@
       
       <button class="btn btn--primary" id="btnShowSummary" style="width: 100%; margin-bottom: 16px;">Сформувати зріз за обрані дати</button>
       
-      <div id="summaryTextBox" style="display:none; background: var(--surface-3); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--rule); font-size: 13.5px; line-height: 1.6; color: var(--text);">
-        <!-- Текст генерується скриптом -->
-      </div>
-
+      <div id="summaryTextBox" style="display:none; background: var(--surface-3); padding: 18px; border-radius: var(--radius-sm); border: 1px solid var(--rule); font-size: 13.5px; line-height: 1.6; color: var(--text);"></div>
     </div>
   </div>
 </div>
@@ -442,6 +466,6 @@
 </div>
 
 <script src="config.js"></script>
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body>
 </html>
