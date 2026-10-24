@@ -97,7 +97,13 @@ function dateField(id) { const v = $(id).value; return isValidDateStr(v) ? v : t
 
 /* ============================ допоміжні вибірки ============================ */
 
-const getDirections = () => { const seen = []; state.settings.forEach(s => { if (!seen.includes(s.direction)) seen.push(s.direction); }); return seen; };
+const DIRECTION_ORDER = ['Швидкий старт з блогу', 'Продажі 24/7', 'Big Money', 'Офлайн робота'];
+const getDirections = () => {
+  const seen = [];
+  state.settings.forEach(s => { if (!seen.includes(s.direction)) seen.push(s.direction); });
+  const rank = d => { const i = DIRECTION_ORDER.indexOf(d); return i === -1 ? DIRECTION_ORDER.length : i; };
+  return seen.map((d, i) => [d, i]).sort((x, y) => rank(x[0]) - rank(y[0]) || x[1] - y[1]).map(x => x[0]);
+};
 const getTariffs = direction => state.settings.filter(s => s.direction === direction).sort((a, b) => toNum(a.order) - toNum(b.order));
 const getSetting = (direction, tariff) => state.settings.find(s => s.direction === direction && s.tariff === tariff);
 const leadById = id => state.leads.find(l => l.id === id);
@@ -332,7 +338,10 @@ $('btnAddLead').addEventListener('click', () => {
   $('fCustomPrice').hidden = true;
   state.draft.leadId = genId('lead');
   state.draft.leadPaymentId = genId('pay');
+  $('fDirection').value = '';
   populateAddLeadSelectors();
+  $('fDirection').selectedIndex = 0;
+  populateTariffSelector($('fDirection').value);
   openModal('modalAddLead');
 });
 
@@ -868,13 +877,6 @@ $('loginForm').addEventListener('submit', async e => {
     else if (code === 'auth/operation-not-allowed') showLogin('Вхід за паролем не увімкнено у Firebase.', true);
     else showLogin('Не вдалося увійти: ' + humanError(err), true);
   } finally { btn.disabled = false; }
-});
-
-$('btnResetPw').addEventListener('click', async () => {
-  const email = $('loginEmail').value.trim();
-  if (!email) { showLogin('Вкажіть пошту.', true); return; }
-  try { await db.resetPassword(email); showLogin('Лист для встановлення пароля надіслано на ' + email + '. Перейдіть за посиланням, задайте пароль і поверніться сюди.', false); }
-  catch (err) { console.error(err); showLogin('Не вдалося надіслати лист: ' + humanError(err), true); }
 });
 
 $('btnLogout').addEventListener('click', async () => {

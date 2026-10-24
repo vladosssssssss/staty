@@ -1,7 +1,7 @@
 // db.js — весь доступ к Firebase (Auth + Firestore). Интерфейс простой, чтобы app.js не знал про SDK.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import {
-  getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence,
+  getAuth, signInWithEmailAndPassword, setPersistence, browserLocalPersistence,
   onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
@@ -36,8 +36,6 @@ export async function signInWithPassword(email, password) {
   await setPersistence(auth, browserLocalPersistence);
   await signInWithEmailAndPassword(auth, String(email).trim(), password);
 }
-
-export function resetPassword(email) { return sendPasswordResetEmail(auth, String(email).trim()); }
 
 export function signOutUser() { return signOut(auth); }
 
