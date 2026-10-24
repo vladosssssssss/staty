@@ -37,7 +37,7 @@ body { background: var(--ink); color: var(--text); font-family: var(--font-body)
 .positive { color: var(--green); }
 .negative { color: var(--red); }
 .accent { color: var(--gold); }
-.app { max-width: 1400px; margin: 0 auto; padding: 0 28px 60px; }
+.app { max-width: 1520px; margin: 0 auto; padding: 0 24px 60px; }
 
 .ledger { padding-top: 20px; margin-bottom: 20px; }
 .ledger__top { display: flex; align-items: center; gap: 24px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
@@ -269,3 +269,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
 .misc-row input[type="number"] { width: 130px; }
 .misc-hint { font-size: 12px; }
 @media (max-width: 700px) { .ledger__top { flex-wrap: wrap; } .userbox { margin-left: 0; width: 100%; } }
+
+.login-form { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+.login-form input { width: 100%; padding: 11px 12px; border-radius: 8px; border: 1px solid var(--rule); background: var(--bg, #111); color: inherit; font: inherit; }
+.login-form .btn { width: 100%; justify-content: center; }

@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Доступ має лише власник: вхід через Google з підтвердженою поштою.
+    // Доступ має лише власник: вхід за поштою та паролем, прив'язка до UID власника.
     function isOwner() {
       return request.auth != null
-        && request.auth.token.email_verified == true
+        && request.auth.uid == '42diUMUX65hl0io4ixTKrAGVAGb2'
         && request.auth.token.email == 'vladpetrenko66@gmail.com';
     }
 

@@ -1,7 +1,7 @@
 // db.js — весь доступ к Firebase (Auth + Firestore). Интерфейс простой, чтобы app.js не знал про SDK.
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
+  getAuth, signInWithEmailAndPassword, sendPasswordResetEmail, setPersistence, browserLocalPersistence,
   onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import {
@@ -25,26 +25,19 @@ export function init(config) {
   app = initializeApp(config);
   auth = getAuth(app);
   fs = getFirestore(app);
-  getRedirectResult(auth).catch(() => {});
 }
 
 export function isFileProtocol() { return location.protocol === 'file:'; }
 
 export function onAuthChange(cb) { return onAuthStateChanged(auth, cb); }
 
-export async function signInWithGoogle() {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (err) {
-    if (err && (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment')) {
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-    throw err;
-  }
+// Вхід за поштою та паролем; сесія зберігається в браузері (не потрібно входити щоразу).
+export async function signInWithPassword(email, password) {
+  await setPersistence(auth, browserLocalPersistence);
+  await signInWithEmailAndPassword(auth, String(email).trim(), password);
 }
+
+export function resetPassword(email) { return sendPasswordResetEmail(auth, String(email).trim()); }
 
 export function signOutUser() { return signOut(auth); }
 

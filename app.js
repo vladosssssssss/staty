@@ -250,13 +250,13 @@ function renderSettings() {
   if (ae && wrap.contains(ae) && ae.matches('input, select, textarea')) return; // не збиваємо введення
   if (!allLoaded()) { wrap.innerHTML = ''; return; }
   const dirs = getDirections();
-  if (!dirs.length) { wrap.innerHTML = `<div class="empty-row">Тарифів ще немає — натисніть «+ Додати тариф».</div>`; return; }
+  if (!dirs.length) { wrap.innerHTML = `<div class="empty-row">Тарифів ще немає.</div>`; return; }
   wrap.innerHTML = dirs.map(dir => `<div class="settings-group"><h3>${esc(dir)}</h3><table class="settings-table">
     <thead><tr><th>Тариф</th><th>Ціна 1</th><th>Ціна 2</th><th>Ціна 3</th><th>Комісія</th><th></th></tr></thead><tbody>${getTariffs(dir).map(s => `
     <tr data-direction="${esc(dir)}" data-tariff="${esc(s.tariff)}"><td class="cell-strong" style="text-align:left;">${esc(s.tariff)}</td>
     <td data-label="Ціна 1"><input type="number" min="0" step="0.01" class="s-price1" value="${esc(s.price1)}"></td><td data-label="Ціна 2"><input type="number" min="0" step="0.01" class="s-price2" value="${esc(s.price2)}"></td>
     <td data-label="Ціна 3"><input type="number" min="0" step="0.01" class="s-price3" value="${esc(s.price3)}"></td><td data-label="Комісія"><span class="pct-field"><input type="number" min="0" max="100" step="0.1" class="s-percent" value="${esc(s.percent)}"> %</span></td>
-    <td><div style="display:flex;gap:6px;justify-content:center;"><button class="btn btn--tiny btn--primary save-settings-row">Зберегти</button><button class="btn btn--tiny btn--danger del-settings-row" title="Видалити тариф">✕</button></div></td></tr>`).join('')}</tbody></table></div>`).join('');
+    <td><div style="display:flex;gap:6px;justify-content:center;"><button class="btn btn--tiny btn--primary save-settings-row">Зберегти</button></div></td></tr>`).join('')}</tbody></table></div>`).join('');
 }
 
 function populateAddLeadSelectors() {
@@ -679,32 +679,8 @@ $('settingsGroups').addEventListener('click', async e => {
     await guarded(e.target, 'Збереження...', () => db.saveSetting({ direction, tariff, price1, price2, price3, percent, order: cur ? cur.order : 99 }), 'Тариф збережено');
     return;
   }
-  if (e.target.classList.contains('del-settings-row')) {
-    if (!confirm(`Видалити тариф «${tariff}» з напрямку «${direction}»?\nІснуючі ліди не змінюються — вони зберігають свою ціну та відсоток.`)) return;
-    document.activeElement && document.activeElement.blur();
-    await guarded(e.target, 'Видалення...', () => db.deleteSetting(direction, tariff), 'Тариф видалено');
-  }
 });
 function numField2(row, sel) { return toNum(row.querySelector(sel).value); }
-
-$('btnAddTariff').addEventListener('click', () => {
-  $('tDirectionList').innerHTML = getDirections().map(d => `<option value="${esc(d)}">`).join('');
-  ['tDirection', 'tName', 'tPrice1', 'tPrice2', 'tPrice3', 'tPercent'].forEach(id => { $(id).value = ''; });
-  openModal('modalAddTariff');
-});
-
-$('btnSaveTariff').addEventListener('click', async e => {
-  const direction = $('tDirection').value.trim();
-  const tariff = $('tName').value.trim();
-  const price1 = numField('tPrice1'), price2 = numField('tPrice2') || price1, price3 = numField('tPrice3') || price2, percent = numField('tPercent');
-  if (!direction || !tariff) { toast('Вкажіть напрямок і назву тарифу', true); return; }
-  if (!(price1 > 0)) { toast('Вкажіть ціну 1 більше нуля', true); return; }
-  if (percent < 0 || percent > 100) { toast('Комісія має бути від 0 до 100 %', true); return; }
-  if (getSetting(direction, tariff)) { toast('Такий тариф у цьому напрямку вже існує', true); return; }
-  const order = Math.max(0, ...getTariffs(direction).map(t => toNum(t.order))) + 1;
-  const ok = await guarded(e.currentTarget, 'Збереження...', () => db.saveSetting({ direction, tariff, price1, price2, price3, percent, order }), 'Тариф додано');
-  if (ok) closeModal('modalAddTariff');
-});
 
 $('btnSaveRate').addEventListener('click', async e => {
   const v = numField('sRate');
@@ -712,52 +688,7 @@ $('btnSaveRate').addEventListener('click', async e => {
   await guarded(e.currentTarget, 'Збереження...', () => db.saveRate(v), 'Курс збережено');
 });
 
-function downloadFile(name, text) {
-  const blob = new Blob([text], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-}
 
-$('btnExport').addEventListener('click', () => {
-  const data = {
-    version: 1, source: 'crm-export', exportedAt: new Date().toISOString(), uahRate: rate(),
-    leads: state.leads, payments: state.payments, payouts: state.payouts, settings: state.settings
-  };
-  downloadFile(`crm-backup-${todayStr()}.json`, JSON.stringify(data, null, 1));
-  toast('Резервну копію завантажено');
-});
-
-$('btnImport').addEventListener('click', () => $('importFile').click());
-$('importFile').addEventListener('change', async e => {
-  const file = e.target.files && e.target.files[0];
-  e.target.value = '';
-  if (!file) return;
-  let data;
-  try { data = JSON.parse(await file.text()); } catch (err) { toast('Файл не схожий на JSON', true); return; }
-  const problems = validateImport(data);
-  if (problems.length) { toast('Імпорт скасовано: ' + problems[0], true); console.warn(problems); return; }
-
-  const R = toNum(data.uahRate) || rate();
-  const prepared = {
-    leads: data.leads.map(l => stripSystem(normalizeLead(l))),
-    payments: data.payments.map(p => stripSystem(normalizePayment(p))),
-    payouts: (data.payouts || []).map(p => stripSystem(normalizePayout(p, R))),
-    settings: (data.settings || []).map(s => stripSystem(normalizeSetting(s)))
-  };
-  const summary = `Лідів: ${prepared.leads.length}, платежів: ${prepared.payments.length}, виплат: ${prepared.payouts.length}, тарифів: ${prepared.settings.length}.`;
-  const existing = state.leads.length ? `\n\nУ базі вже є ${state.leads.length} лідів. Записи з однаковими id будуть оновлені, нічого не видаляється.` : '';
-  if (!confirm(`Імпортувати з файлу?\n${summary}${existing}`)) return;
-  // лічильник номерів ніколи не зменшується
-  const counterMin = maxLeadNumber();
-  await guarded($('btnImport'), 'Імпорт даних...', async () => {
-    prepared.counterMin = counterMin;
-    const n = await db.importAll(prepared, rate());
-    toast(`Імпортовано записів: ${n}`);
-  });
-});
 
 function stripSystem(o) { const c = { ...o }; delete c._row; delete c.updatedAt; delete c.createdAt; return c; }
 
@@ -923,16 +854,27 @@ function stopSession() {
   calcCache = null;
 }
 
-$('btnLogin').addEventListener('click', async () => {
+$('loginEmail').value = CFG.OWNER_EMAIL || '';
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
   const btn = $('btnLogin');
   btn.disabled = true;
-  try { await db.signInWithGoogle(); } catch (err) {
+  try { await db.signInWithPassword($('loginEmail').value, $('loginPassword').value); $('loginPassword').value = ''; } catch (err) {
     console.error(err);
     const code = err && err.code ? err.code : '';
-    if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') showLogin('Вікно входу закрито. Спробуйте ще раз.', false);
+    if (['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found', 'auth/invalid-email'].includes(code)) showLogin('Невірна пошта або пароль.', true);
+    else if (code === 'auth/too-many-requests') showLogin('Забагато спроб. Зачекайте кілька хвилин і спробуйте знову.', true);
     else if (code === 'auth/unauthorized-domain') showLogin('Цей домен не додано до дозволених у Firebase (Authentication → Settings → Authorized domains).', true);
+    else if (code === 'auth/operation-not-allowed') showLogin('Вхід за паролем не увімкнено у Firebase.', true);
     else showLogin('Не вдалося увійти: ' + humanError(err), true);
   } finally { btn.disabled = false; }
+});
+
+$('btnResetPw').addEventListener('click', async () => {
+  const email = $('loginEmail').value.trim();
+  if (!email) { showLogin('Вкажіть пошту.', true); return; }
+  try { await db.resetPassword(email); showLogin('Лист для встановлення пароля надіслано на ' + email + '. Перейдіть за посиланням, задайте пароль і поверніться сюди.', false); }
+  catch (err) { console.error(err); showLogin('Не вдалося надіслати лист: ' + humanError(err), true); }
 });
 
 $('btnLogout').addEventListener('click', async () => {
@@ -944,7 +886,7 @@ $('btnLogout').addEventListener('click', async () => {
 function boot() {
   if (location.protocol === 'file:') {
     $('btnLogin').disabled = true;
-    showLogin('Сторінку відкрито як локальний файл — вхід через Google з file:// не працює. Відкрийте сайт за адресою https://… (Firebase Hosting / GitHub Pages) або через http://localhost.', true);
+    showLogin('Сторінку відкрито як локальний файл — вхід з file:// не працює. Відкрийте сайт за адресою https://… (Firebase Hosting) або через http://localhost.', true);
     return;
   }
   try {

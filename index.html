@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=36">
+<link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
 
@@ -17,8 +17,13 @@
   <div class="login-card">
     <span class="brand__mark">₴€</span>
     <h2>Моя стата</h2>
-    <p class="muted" id="loginText">Увійдіть через Google, щоб відкрити облікову книгу.</p>
-    <button class="btn btn--primary" id="btnLogin">Увійти через Google</button>
+    <p class="muted" id="loginText">Увійдіть, щоб відкрити облікову книгу.</p>
+    <form id="loginForm" class="login-form" autocomplete="on">
+      <input type="email" id="loginEmail" name="username" autocomplete="username" placeholder="Пошта" required>
+      <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="Пароль" required>
+      <button class="btn btn--primary" id="btnLogin" type="submit">Увійти</button>
+    </form>
+    <button class="btn btn--small" id="btnResetPw" type="button">Задати / змінити пароль (лист на пошту)</button>
     <p class="login-error" id="loginError" hidden></p>
   </div>
 </div>
@@ -163,22 +168,14 @@
   <main class="view" id="view-settings">
     <div class="toolbar">
       <h2 class="view-title">Напрямки, тарифи, ціни та відсоток комісії</h2>
-      <button class="btn btn--primary" id="btnAddTariff">+ Додати тариф</button>
     </div>
 
     <div class="settings-group settings-misc">
-      <h3>Курс та резервна копія</h3>
+      <h3>Курс</h3>
       <div class="misc-row">
         <label for="sRate">Курс € → ₴</label>
         <input type="number" id="sRate" step="0.001" min="0">
         <button class="btn btn--tiny btn--primary" id="btnSaveRate">Зберегти курс</button>
-        <span class="muted misc-hint">Курс впливає на показ сум у гривнях і на нові виплати. Збережені виплати свою суму в ₴ не змінюють.</span>
-      </div>
-      <div class="misc-row">
-        <button class="btn btn--small" id="btnExport">⬇ Завантажити резервну копію (JSON)</button>
-        <button class="btn btn--small" id="btnImport">⬆ Імпорт з файлу (JSON)</button>
-        <input type="file" id="importFile" accept=".json,application/json" hidden>
-        <span class="muted misc-hint">Імпорт нічого не видаляє: записи з тими ж id оновлюються, нові додаються.</span>
       </div>
     </div>
 
@@ -366,36 +363,6 @@
 </div>
 
 <!-- Модалка: Новий тариф -->
-<div class="modal-overlay" id="modalAddTariff">
-  <div class="modal modal--small">
-    <div class="modal__head">
-      <h3>Новий тариф</h3>
-      <button class="icon-btn" data-close-modal="modalAddTariff">✕</button>
-    </div>
-    <div class="modal__body">
-      <div class="form-row">
-        <label>Напрямок (оберіть існуючий або впишіть новий)</label>
-        <input type="text" id="tDirection" list="tDirectionList" maxlength="80">
-        <datalist id="tDirectionList"></datalist>
-      </div>
-      <div class="form-row"><label>Назва тарифу</label><input type="text" id="tName" maxlength="80"></div>
-      <div class="form-row form-row--split">
-        <div><label>Ціна 1 (без знижки), €</label><input type="number" id="tPrice1" min="0" step="0.01"></div>
-        <div><label>Ціна 2 (знижка 1), €</label><input type="number" id="tPrice2" min="0" step="0.01"></div>
-      </div>
-      <div class="form-row form-row--split">
-        <div><label>Ціна 3 (знижка 2), €</label><input type="number" id="tPrice3" min="0" step="0.01"></div>
-        <div><label>Комісія, %</label><input type="number" id="tPercent" min="0" max="100" step="0.1"></div>
-      </div>
-    </div>
-    <div class="modal__foot">
-      <button class="btn" data-close-modal="modalAddTariff">Скасувати</button>
-      <button class="btn btn--primary" id="btnSaveTariff">Додати</button>
-    </div>
-  </div>
-</div>
-
-<!-- Модалка: Повна Статистика -->
 <div class="modal-overlay" id="modalStats">
   <div class="modal modal--wide">
     <div class="modal__head">
@@ -527,6 +494,6 @@
 </div>
 
 <script src="config.js"></script>
-<script type="module" src="app.js?v=36"></script>
+<script type="module" src="app.js?v=40"></script>
 </body>
 </html>
