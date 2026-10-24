@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Доступ має лише власник: вхід через Google з підтвердженою поштою.
+    function isOwner() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 'vladpetrenko66@gmail.com';
+    }
+
+    function validLead(d) {
+      return d.keys().hasAll(['number', 'clientName', 'direction', 'tariff', 'price', 'commissionPercent', 'status', 'createdDate', 'month', 'cancelled'])
+        && d.number is number
+        && d.clientName is string && d.clientName.size() <= 200
+        && d.price is number && d.price >= 0
+        && d.commissionPercent is number && d.commissionPercent >= 0 && d.commissionPercent <= 100
+        && d.status is string
+        && d.createdDate is string && d.createdDate.size() == 10
+        && d.month is string && d.month.size() == 7
+        && d.cancelled is bool;
+    }
+
+    function validPayment(d) {
+      return d.keys().hasAll(['leadId', 'amount', 'date', 'cancelled'])
+        && d.leadId is string
+        && d.amount is number && d.amount > 0
+        && d.date is string && d.date.size() == 10
+        && d.cancelled is bool;
+    }
+
+    function validPayout(d) {
+      return d.keys().hasAll(['date', 'amount'])
+        && d.date is string && d.date.size() == 10
+        && d.amount is number && d.amount >= 0;
+    }
+
+    function validSetting(d) {
+      return d.keys().hasAll(['direction', 'tariff', 'price1', 'price2', 'price3', 'percent', 'order'])
+        && d.direction is string && d.tariff is string
+        && d.price1 is number && d.price1 >= 0
+        && d.price2 is number && d.price2 >= 0
+        && d.price3 is number && d.price3 >= 0
+        && d.percent is number && d.percent >= 0 && d.percent <= 100
+        && d.order is number;
+    }
+
+    match /leads/{id} {
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner() && validLead(request.resource.data);
+    }
+    match /payments/{id} {
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner() && validPayment(request.resource.data);
+    }
+    match /payouts/{id} {
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner() && validPayout(request.resource.data);
+    }
+    match /settings/{id} {
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner() && validSetting(request.resource.data);
+    }
+    match /meta/{id} {
+      allow read, write: if isOwner();
+    }
+
+    // Все інші шляхи заборонені.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

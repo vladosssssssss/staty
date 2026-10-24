@@ -1,0 +1,16 @@
+{
+  "firestore": { "rules": "firestore.rules" },
+  "hosting": {
+    "public": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "claude/**", "legacy/**", "*.md", "firestore.rules", "package.json"],
+    "headers": [
+      { "source": "**", "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "no-referrer" },
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+      ] },
+      { "source": "**/*.@(js|css|html)", "headers": [ { "key": "Cache-Control", "value": "no-cache" } ] }
+    ]
+  }
+}
