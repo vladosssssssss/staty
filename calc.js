@@ -117,6 +117,9 @@ export function createCalc(data, now = new Date()) {
 
   const paymentsOf = id => byLead.get(id) || [];
   const isContract = l => l.status === CONTRACT;
+  // Договір (50/50 по місяцях) діє лише для активного ліда. Скасований лід рахується
+  // за фактично внесеними платежами (бронь/передоплата залишається), без залишку й потенціалу.
+  const isContractActive = l => isContract(l) && !l.cancelled;
 
   function paymentMonth(p, lead) {
     const m = String(p.date || '').substring(0, 7);
@@ -129,16 +132,16 @@ export function createCalc(data, now = new Date()) {
   }
 
   function actualPaidInMonth(lead, targetMonth) {
-    if (!lead || lead.cancelled) return 0;
+    if (!lead) return 0;
     const valid = paymentsOf(lead.id).filter(p => !p.cancelled);
     if (!targetMonth) return valid.reduce((s, p) => s + toNum(p.amount), 0);
     return valid.filter(p => paymentMonth(p, lead) === targetMonth).reduce((s, p) => s + toNum(p.amount), 0);
   }
 
   function leadPaidTotal(lead, targetMonth) {
-    if (!lead || lead.cancelled) return 0;
+    if (!lead) return 0;
     const price = toNum(lead.price);
-    if (isContract(lead)) {
+    if (isContractActive(lead)) {
       const m2 = shiftMonth(lead.month, 1);
       if (targetMonth) return (targetMonth === lead.month || targetMonth === m2) ? price / 2 : 0;
       return realMonth < m2 ? price / 2 : price;
@@ -165,10 +168,10 @@ export function createCalc(data, now = new Date()) {
   }
 
   function leadCommissionFact(lead, targetMonth) {
-    if (!lead || lead.cancelled) return 0;
+    if (!lead) return 0;
     const pct = toNum(lead.commissionPercent) / 100;
     const price = toNum(lead.price);
-    if (isContract(lead)) {
+    if (isContractActive(lead)) {
       const total = price * pct;
       const m2 = shiftMonth(lead.month, 1);
       if (targetMonth) return (targetMonth === lead.month || targetMonth === m2) ? total / 2 : 0;
@@ -198,9 +201,9 @@ export function createCalc(data, now = new Date()) {
   }
 
   function dashboard(month, today = now) {
-    const monthLeads = leads.filter(l => l.month === month && !l.cancelled);
-    const contractPrev = leads.filter(l => !l.cancelled && isContract(l) && shiftMonth(l.month, 1) === month);
-    const doplataPrev = leads.filter(l => !l.cancelled && l.month !== month && !isContract(l) && actualPaidInMonth(l, month) > 0);
+    const monthLeads = leads.filter(l => l.month === month);
+    const contractPrev = leads.filter(l => isContractActive(l) && shiftMonth(l.month, 1) === month);
+    const doplataPrev = leads.filter(l => l.month !== month && !isContractActive(l) && actualPaidInMonth(l, month) > 0);
 
     const newMoneyLeads = [...monthLeads, ...doplataPrev];
     const all = [...monthLeads, ...doplataPrev, ...contractPrev];
@@ -214,7 +217,7 @@ export function createCalc(data, now = new Date()) {
     const myPotentialMonth = monthLeads.reduce((s, l) => s + leadCommissionPotential(l, month), 0);
     const myTotalMonth = myFact + myPotentialMonth;
 
-    const active = leads.filter(l => !l.cancelled);
+    const active = leads;
     const clientPaidAllTime = active.reduce((s, l) => s + leadPaidTotal(l), 0);
     const clientPotentialFull = active.reduce((s, l) => s + leadClientPotential(l), 0);
     const myFactAllTime = active.reduce((s, l) => s + leadCommissionFact(l), 0);
@@ -243,8 +246,8 @@ export function createCalc(data, now = new Date()) {
     const thisMonth = leads.filter(l => l.month === month).sort(byNewest);
     const extra = leads.filter(l => {
       if (l.month === month) return false;
-      const carry = isContract(l) && shiftMonth(l.month, 1) === month;
-      const doplata = !isContract(l) && actualPaidInMonth(l, month) > 0;
+      const carry = isContractActive(l) && shiftMonth(l.month, 1) === month;
+      const doplata = !isContractActive(l) && actualPaidInMonth(l, month) > 0;
       return carry || doplata;
     }).sort(byNewest);
     return { thisMonth, extra };
@@ -284,7 +287,7 @@ export function createCalc(data, now = new Date()) {
   function periodSummary(fromStr, toStr) {
     const periodLeads = leads.filter(l => !l.cancelled && l.createdDate >= fromStr && l.createdDate <= toStr);
     const carryOverLeads = leads.filter(l => {
-      if (l.cancelled || !isContract(l)) return false;
+      if (!isContractActive(l)) return false;
       const nextFirst = shiftMonth(l.month, 1) + '-01';
       return nextFirst >= fromStr && nextFirst <= toStr;
     });
@@ -294,7 +297,7 @@ export function createCalc(data, now = new Date()) {
     payments.forEach(p => {
       if (p.cancelled) return;
       const lead = leadById.get(p.leadId);
-      if (!lead || lead.cancelled || isContract(lead)) return;
+      if (!lead || isContractActive(lead)) return;
       const pDate = String(p.date || lead.createdDate || '');
       if (pDate >= fromStr && pDate <= toStr) myFact += toNum(p.amount) * (toNum(lead.commissionPercent) / 100);
     });
