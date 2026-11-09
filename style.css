@@ -381,3 +381,23 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
 @media (max-width: 700px) { .search-box input[type="text"] { min-height: 44px; } }
 .figure-card--clients .fc-item__big, .figure-card--owed .fc-item__big { margin-top: -4px; }
 .figure-card--clients .fc-item__small, .figure-card--owed .fc-item__small { margin-top: -4px; }
+
+/* v52: все по центру, мінімум тексту */
+.figure-card { align-items: stretch; text-align: center; }
+.figure-card__label { text-align: center; font-size: 11px; }
+.fc-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding-top: 2px; }
+.fc-body .fc-item__big { margin-top: 0 !important; }
+.fc-body .fc-item__small { margin-top: 0 !important; }
+.fc-body .fc-item__label { min-height: 0; margin-top: 4px; }
+.fc-split { flex: 1; align-items: center; }
+.fc-item { align-items: center; text-align: center; padding: 0 10px; border-left: 1px solid var(--rule); }
+.fc-item:first-child { border-left: 0; padding-left: 0; }
+.fc-item:last-child { padding-right: 0; }
+.fc-item__label { min-height: 0; margin-bottom: 4px; text-align: center; }
+.fc-item__big, .fc-item__small { text-align: center; }
+.figure-card--clients .fc-item__label, .figure-card--owed .fc-item__label { min-height: 0; }
+.fc-split { grid-template-columns: 1fr 1.15fr 1.1fr; }
+.st2-title { text-align: left; }
+.st2-note { text-align: left; }
+.fc-split { align-items: end; padding-bottom: 4px; }
+.fc-item { justify-content: flex-end; height: 100%; }

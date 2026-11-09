@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=51">
+<link rel="stylesheet" href="style.css?v=52">
 </head>
 <body>
 
@@ -56,34 +56,35 @@
 
     <div class="ledger__figures" id="figures">
       <div class="figure-card figure-card--clients">
-        <span class="figure-card__label">Клієнти оплатили</span>
-        <span class="fc-item__label">Обʼєм місяця (оплати клієнтів)</span>
-        <b class="fc-item__big mono" id="figVolume">0 €</b>
-        <span class="fc-item__small mono" id="figVolumeUAH">0 ₴</span>
-        <span class="figure-card__sub" id="figVolumeSub"></span>
+        <span class="figure-card__label">Обʼєм місяця</span>
+        <div class="fc-body">
+          <b class="fc-item__big mono" id="figVolume">0 €</b>
+          <span class="fc-item__small mono" id="figVolumeUAH">0 ₴</span>
+          <span class="fc-item__label" id="figVolumeSub"></span>
+        </div>
       </div>
       <div class="figure-card figure-card--mine">
-        <span class="figure-card__label">Мій чистий заробіток за місяць</span>
+        <span class="figure-card__label">Мій чистий заробіток</span>
         <div class="fc-split">
           <div class="fc-item"><span class="fc-item__label">Нові клієнти</span><b class="fc-item__big mono" id="figNewUAH">0 ₴</b><span class="fc-item__small mono" id="figNew">0 €</span></div>
-          <div class="fc-item"><span class="fc-item__label">Договори й доплати з минулих місяців</span><b class="fc-item__big mono" id="figCarryUAH">0 ₴</b><span class="fc-item__small mono" id="figCarry">0 €</span></div>
+          <div class="fc-item"><span class="fc-item__label">Договори з минулого місяця</span><b class="fc-item__big mono" id="figCarryUAH">0 ₴</b><span class="fc-item__small mono" id="figCarry">0 €</span></div>
           <div class="fc-item fc-item--total"><span class="fc-item__label">Разом</span><b class="fc-item__big mono" id="figMyFactUAH">0 ₴</b><span class="fc-item__small mono" id="figMyFact">0 €</span></div>
         </div>
       </div>
       <div class="figure-card figure-card--wait">
         <span class="figure-card__label">Ще очікую</span>
         <div class="fc-split">
-          <div class="fc-item"><span class="fc-item__label">З боргів клієнтів</span><b class="fc-item__big mono" id="figDebtUAH">0 ₴</b><span class="fc-item__small mono" id="figDebt">0 €</span></div>
-          <div class="fc-item"><span class="fc-item__label">Договори → наступний місяць</span><b class="fc-item__big mono" id="figNextUAH">0 ₴</b><span class="fc-item__small mono" id="figNext">0 €</span></div>
+          <div class="fc-item"><span class="fc-item__label">Борги клієнтів</span><b class="fc-item__big mono" id="figDebtUAH">0 ₴</b><span class="fc-item__small mono" id="figDebt">0 €</span></div>
+          <div class="fc-item"><span class="fc-item__label">Договори на наступний місяць</span><b class="fc-item__big mono" id="figNextUAH">0 ₴</b><span class="fc-item__small mono" id="figNext">0 €</span></div>
           <div class="fc-item fc-item--total"><span class="fc-item__label">Разом</span><b class="fc-item__big mono" id="figMyPotentialUAH">0 ₴</b><span class="fc-item__small mono" id="figMyPotential">0 €</span></div>
         </div>
       </div>
       <div class="figure-card figure-card--owed">
         <span class="figure-card__label">До виплати мені</span>
-        <span class="fc-item__label">Баланс за весь час</span>
-        <b class="fc-item__big mono" id="figOwedUAH">0 ₴</b>
-        <span class="fc-item__small mono" id="figOwed">0 €</span>
-        <span class="figure-card__sub">заробіток мінус уже отримані виплати</span>
+        <div class="fc-body">
+          <b class="fc-item__big mono" id="figOwedUAH">0 ₴</b>
+          <span class="fc-item__small mono" id="figOwed">0 €</span>
+        </div>
       </div>
     </div>
   </header>
@@ -372,8 +373,8 @@
         <p class="st2-note" id="mdPctNote"></p>
 
         <div class="st2-card st2-card--new">
-          <div class="st2-title">1 · Нові клієнти цього місяця <em id="mdNewCount"></em></div>
-        <div class="st2-head"><span></span><span>Клієнти заплатили</span><span>Мій чистий заробіток</span></div>
+          <div class="st2-title">Нові клієнти <em id="mdNewCount"></em></div>
+        <div class="st2-head"><span></span><span>Клієнти заплатили</span><span>Мій заробіток</span></div>
         <div class="st2-row" id="mdNew">
           <div class="st2-name">Оплати нових клієнтів<small id="mdNew_SUB"></small></div>
           <div class="st2-cell"><b class="mono" id="mdNew_CL">—</b></div>
@@ -382,15 +383,15 @@
         </div>
 
         <div class="st2-card st2-card--carry">
-          <div class="st2-title">2 · З минулих місяців <em>зарплата тут, обʼєм — у місяці створення</em></div>
-        <div class="st2-head"><span></span><span>Клієнти заплатили</span><span>Мій чистий заробіток</span></div>
+          <div class="st2-title">З минулих місяців</div>
+        <div class="st2-head"><span></span><span>Клієнти заплатили</span><span>Мій заробіток</span></div>
         <div class="st2-row" id="mdCarry">
-          <div class="st2-name">Договори минулого місяця — друга половина<small id="mdCarry_SUB"></small></div>
+          <div class="st2-name">Договори минулого місяця<small id="mdCarry_SUB"></small></div>
           <div class="st2-cell"><b class="mono" id="mdCarry_CL">—</b></div>
           <div class="st2-cell st2-cell--my"><b class="mono" id="mdCarry_UAH">0 ₴</b><span class="mono" id="mdCarry_MY">0 €</span></div>
         </div>
         <div class="st2-row" id="mdTopup">
-          <div class="st2-name">Доплати клієнтів минулих місяців<small id="mdTopup_SUB"></small></div>
+          <div class="st2-name">Доплати минулих місяців<small id="mdTopup_SUB"></small></div>
           <div class="st2-cell"><b class="mono" id="mdTopup_CL">—</b></div>
           <div class="st2-cell st2-cell--my"><b class="mono" id="mdTopup_UAH">0 ₴</b><span class="mono" id="mdTopup_MY">0 €</span></div>
         </div>
@@ -406,14 +407,14 @@
 
         <div class="st2-card st2-card--wait">
           <div class="st2-title">Ще очікую</div>
-        <div class="st2-head"><span></span><span>Клієнти заплатили</span><span>Мій чистий заробіток</span></div>
+        <div class="st2-head"><span></span><span>Клієнти заплатили</span><span>Мій заробіток</span></div>
         <div class="st2-row" id="mdDebt">
           <div class="st2-name">Борги клієнтів цього місяця<small id="mdDebt_SUB"></small></div>
           <div class="st2-cell"><b class="mono" id="mdDebt_CL">—</b></div>
           <div class="st2-cell st2-cell--my"><b class="mono" id="mdDebt_UAH">0 ₴</b><span class="mono" id="mdDebt_MY">0 €</span></div>
         </div>
         <div class="st2-row" id="mdNext">
-          <div class="st2-name">Договори цього місяця — друга половина піде у наступний місяць<small id="mdNext_SUB"></small></div>
+          <div class="st2-name">Договори цього місяця<small id="mdNext_SUB"></small></div>
           <div class="st2-cell"><b class="mono" id="mdNext_CL">—</b></div>
           <div class="st2-cell st2-cell--my"><b class="mono" id="mdNext_UAH">0 ₴</b><span class="mono" id="mdNext_MY">0 €</span></div>
         </div>
@@ -487,6 +488,6 @@
 </div>
 
 <script src="config.js"></script>
-<script type="module" src="app.js?v=51"></script>
+<script type="module" src="app.js?v=52"></script>
 </body>
 </html>

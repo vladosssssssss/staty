@@ -158,7 +158,7 @@ function renderDashboard() {
   const pair = (id, eur) => { $(id).textContent = fmtEUR(eur); $(id + 'UAH').textContent = fmtUAH(eur * R); };
   $('figVolume').textContent = fmtEUR(d.clientPaidFact);
   $('figVolumeUAH').textContent = fmtUAH(d.clientPaidFact * R);
-  $('figVolumeSub').textContent = `Нових клієнтів: ${d.newClientsCount}` + (d.newMonth ? ' · обʼєм у місяці створення клієнта' : '');
+  $('figVolumeSub').textContent = `Нових клієнтів: ${d.newClientsCount}`;
   pair('figNew', d.newFact);
   pair('figCarry', d.contractCarryFact + d.topupFact);
   pair('figMyFact', d.myFact);
@@ -182,15 +182,15 @@ function renderStatsFigures(dIn) {
     $(id).classList.toggle('st2-row--zero', !!hideIfZero && empty);
   };
   $('mdPctNote').textContent = d.newMonth
-    ? 'Заробіток = 8 % від суми оплати мінус 5 % податку (для агенції 10 %, Big Money 12 %). Бонусні відсотки й ставку ви вносите у виплатах окремо.'
-    : 'Цей місяць рахується за старими умовами: відсоток кожного ліда.';
-  $('mdNewCount').textContent = `· прийшло клієнтів: ${d.newClientsCount}`;
-  row('mdNew', d.newPaid, d.newFact, d.newMonth ? 'Обʼєм місяця. Договір — повна сума одразу, а зарплата з нього ділиться навпіл. Доплати наступних місяців додаються сюди' : 'Оплати нових клієнтів за цей місяць');
-  row('mdCarry', d.contractCarryMoney, d.contractCarryFact, 'В обʼєм цього місяця не входить: він уже врахований у місяці договору', true);
-  row('mdTopup', d.topupMoney, d.topupFact, 'Обʼєм цих доплат іде в місяць, коли клієнт прийшов', true);
-  row('mdTotal', d.clientPaidFact, d.myFact, d.newMonth ? 'Обʼєм = лише нові клієнти (і їхні доплати). Заробіток = нові + з минулих місяців' : '');
-  row('mdDebt', d.clientPotentialMonth, d.myPotentialMonth, 'Ще не доплатили за тарифом', true);
-  row('mdNext', d.contractNextMoney, d.contractNextFact, 'Обʼєм цих договорів уже в цьому місяці, зарплата прийде у наступному', true);
+    ? '8 % від суми мінус 5 % податку · агенція 10 % · Big Money 12 %'
+    : 'Старі умови: відсоток кожного ліда';
+  $('mdNewCount').textContent = `· ${d.newClientsCount}`;
+  row('mdNew', d.newPaid, d.newFact, d.newMonth ? 'Договір: обʼєм повністю, зарплата навпіл' : '');
+  row('mdCarry', d.contractCarryMoney, d.contractCarryFact, 'Обʼєм уже в минулому місяці', true);
+  row('mdTopup', d.topupMoney, d.topupFact, 'Обʼєм — у місяці створення', true);
+  row('mdTotal', d.clientPaidFact, d.myFact, '');
+  row('mdDebt', d.clientPotentialMonth, d.myPotentialMonth, '', true);
+  row('mdNext', d.contractNextMoney, d.contractNextFact, 'Друга половина — наступного місяця', true);
   const allRow = (id, eur, sub) => {
     $(id + '_EUR').textContent = fmtEUR(eur);
     $(id + '_UAH').textContent = fmtUAH(eur * R);
@@ -248,7 +248,7 @@ function renderDealsTable() {
   }
   let html = thisMonth.map(l => dealRowHtml(l, state.currentMonth)).join('');
   if (extra.length) {
-    html += `<tr><td colspan="11" style="text-align:center; background:var(--surface-3); color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.5px; padding:10px;">↑ Нові ліди цього місяця &nbsp;|&nbsp; ↓ Перенесені договори та доплати з минулих місяців</td></tr>`;
+    html += `<tr><td colspan="11" style="text-align:center; background:var(--surface-3); color:var(--text-muted); font-size:11px; text-transform:uppercase; letter-spacing:0.5px; padding:10px;">↑ Нові ліди &nbsp;|&nbsp; ↓ Договори й доплати з минулих місяців</td></tr>`;
     html += extra.map(l => dealRowHtml(l, state.currentMonth)).join('');
   }
   tbody.innerHTML = html;
