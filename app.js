@@ -156,11 +156,14 @@ function renderDashboard() {
   const d = calc().dashboard(state.currentMonth, new Date());
   const R = rate();
   const pair = (id, eur) => { $(id).textContent = fmtEUR(eur); $(id + 'UAH').textContent = fmtUAH(eur * R); };
-  pair('figVolume', d.clientPaidFact);
-  pair('figNewFact', d.newFact);
-  pair('figCarryFact', d.contractCarryFact + d.topupFact);
+  const carry = d.contractCarryFact + d.topupFact;
+  const waitTotal = d.myPotentialMonth + d.contractNextFact;
+  $('figVolume').textContent = fmtEUR(d.clientPaidFact);
+  $('figVolumeSub').textContent = `Нових клієнтів: ${d.newClientsCount}` + (d.newMonth ? ' · обʼєм по місяцю створення' : '');
   pair('figMyFact', d.myFact);
-  pair('figMyPotential', d.myPotentialMonth);
+  $('figMyFactSub').textContent = `нові ${fmtEUR(d.newFact)} · з минулих місяців ${fmtEUR(carry)}`;
+  pair('figMyPotential', waitTotal);
+  $('figMyPotentialSub').textContent = `борги ${fmtEUR(d.myPotentialMonth)} · договори на наступний місяць ${fmtEUR(d.contractNextFact)}`;
   pair('figOwed', d.expectedPayout);
   renderStatsFigures(d);
 }
@@ -168,31 +171,35 @@ function renderDashboard() {
 function renderStatsFigures(dIn) {
   const d = dIn || calc().dashboard(state.currentMonth, new Date());
   const R = rate();
-  // рядок: назва, підпис, сума в € і ₴; нульові необов'язкові рядки ховаємо
-  const row = (id, eur, sub, hideIfZero) => {
+  // рядок: «клієнти заплатили» | «мій чистий заробіток»; порожні необов'язкові рядки ховаємо
+  const row = (id, clientEur, myEur, sub, hideIfZero) => {
+    $(id + '_CL').textContent = clientEur == null ? '—' : fmtEUR(clientEur);
+    $(id + '_MY').textContent = fmtEUR(myEur);
+    $(id + '_UAH').textContent = fmtUAH(myEur * R);
+    $(id + '_SUB').textContent = sub || '';
+    const empty = Math.abs(myEur) < 0.005 && !(clientEur > 0.005);
+    $(id).classList.toggle('st2-row--zero', !!hideIfZero && empty);
+  };
+  $('mdPctNote').textContent = d.newMonth
+    ? 'Заробіток = 8 % від суми оплати мінус 5 % податку (для агенції 10 %, Big Money 12 %). Бонусні відсотки й ставку ви вносите у виплатах окремо.'
+    : 'Цей місяць рахується за старими умовами: відсоток кожного ліда.';
+  $('mdNewCount').textContent = `· прийшло клієнтів: ${d.newClientsCount}`;
+  row('mdNew', d.newPaid, d.newFact, d.newMonth ? 'Обʼєм місяця. Договір — повна сума одразу, а зарплата з нього ділиться навпіл. Доплати наступних місяців додаються сюди' : 'Оплати нових клієнтів за цей місяць');
+  row('mdCarry', d.contractCarryMoney, d.contractCarryFact, 'В обʼєм цього місяця не входить: він уже врахований у місяці договору', true);
+  row('mdTopup', d.topupMoney, d.topupFact, 'Обʼєм цих доплат іде в місяць, коли клієнт прийшов', true);
+  row('mdTotal', d.clientPaidFact, d.myFact, d.newMonth ? 'Обʼєм = лише нові клієнти (і їхні доплати). Заробіток = нові + з минулих місяців' : '');
+  row('mdDebt', d.clientPotentialMonth, d.myPotentialMonth, 'Ще не доплатили за тарифом', true);
+  row('mdNext', d.contractNextMoney, d.contractNextFact, 'Обʼєм цих договорів уже в цьому місяці, зарплата прийде у наступному', true);
+  row('mdForecast', null, d.forecastEUR, 'Орієнтовно, за темпом цього місяця');
+  const allRow = (id, eur, sub) => {
     $(id + '_EUR').textContent = fmtEUR(eur);
     $(id + '_UAH').textContent = fmtUAH(eur * R);
     $(id + '_SUB').textContent = sub || '';
-    $(id).classList.toggle('st-row--zero', !!hideIfZero && Math.abs(eur) < 0.005 && !sub);
   };
-  const monthName = state.currentMonth;
-  $('mdVolLabel').textContent = d.newMonth ? `Обʼєм місяця ${monthName}` : `Сплатили клієнти за ${monthName}`;
-  $('mdVolume_EUR').textContent = fmtEUR(d.clientPaidFact);
-  $('mdVolume_SUB').textContent = d.newMonth
-    ? 'Оплати клієнтів, створених у цьому місяці (договір — повна сума одразу; доплати наступних місяців додаються сюди)'
-    : 'Фактичні оплати клієнтів за місяць';
-  $('mdPctNote').textContent = d.newMonth ? '· 8 % від суми оплати мінус 5 % податку' : '· за відсотком кожного ліда';
-  row('mdNew', d.newFact, d.newMonth ? 'З оплат нових клієнтів; договір — половина' : '');
-  row('mdCarry', d.contractCarryFact, d.contractCarryMoney > 0 ? `Клієнти заплатили (друга половина): ${fmtEUR(d.contractCarryMoney)}` : '', true);
-  row('mdTopup', d.topupFact, d.topupMoney > 0 ? `Клієнти доплатили: ${fmtEUR(d.topupMoney)}` : '', true);
-  row('mdTotal', d.myFact, '');
-  row('mdDebt', d.myPotentialMonth, d.clientPotentialMonth > 0 ? `Борг клієнтів: ${fmtEUR(d.clientPotentialMonth)}` : '', true);
-  row('mdNext', d.contractNextFact, d.contractNextMoney > 0 ? `Клієнти заплатять: ${fmtEUR(d.contractNextMoney)}` : '', true);
-  row('mdForecast', d.forecastEUR, 'Орієнтовно, за темпом цього місяця');
-  row('mdAllPaid', d.clientPaidAllTime, '');
-  row('mdAllDebt', d.clientPotentialFull, '');
-  row('mdAllFact', d.myFactAllTime, '');
-  row('mdAllMyDebt', d.myPotentialFull, '');
+  allRow('mdAllPaid', d.clientPaidAllTime, '');
+  allRow('mdAllDebt', d.clientPotentialFull, '');
+  allRow('mdAllFact', d.myFactAllTime, '');
+  allRow('mdAllMyDebt', d.myPotentialFull, '');
 }
 
 // Ефективний % від суми оплати: для нових умов — базовий % мінус 5 % податку (напр. 8 % → 7,6 %)
@@ -215,7 +222,7 @@ function dealRowHtml(lead, monthToPass) {
       <td class="mono muted">#${esc(lead.number)}</td>
       <td><div class="cell-strong">${esc(lead.clientName || '—')}</div><div class="cell-sub">${esc(lead.nickname || '')}</div></td>
       <td><div class="cell-strong">${esc(lead.direction)}</div><div class="cell-sub">${esc(lead.tariff)}</div></td>
-      <td class="mono">${fmtN(lead, lead.price)}</td>
+      <td class="mono">${fmtL(lead, lead.price)}</td>
       <td class="mono positive">${fmtL(lead, paidInView)}${showTotalHint ? `<div style="font-size: 10.5px; color: var(--text-muted); font-weight: normal; margin-top: 3px;">Всього: ${fmtL(lead, totalPaidAll)}</div>` : ''}</td>
       <td class="mono ${rem > 0 ? 'negative' : 'muted'}">${fmtL(lead, rem)}</td>
       <td class="mono muted">${esc(pctLabel(lead))}</td>
@@ -774,59 +781,13 @@ function validateImport(d) {
 $('mdTabMonth').addEventListener('click', () => {
   $('mdTabMonth').classList.add('active'); $('mdTabAll').classList.remove('active');
   $('mdViewMonth').style.display = 'block'; $('mdViewAll').style.display = 'none';
-  $('summaryTextBox').style.display = 'none';
-  const [y, m] = state.currentMonth.split('-').map(Number);
-  $('mdFromDate').value = `${y}-${String(m).padStart(2, '0')}-01`;
-  let endD = new Date(y, m, 0).getDate();
-  const today = new Date();
-  if (today.getFullYear() === y && (today.getMonth() + 1) === m) endD = today.getDate();
-  $('mdToDate').value = `${y}-${String(m).padStart(2, '0')}-${String(endD).padStart(2, '0')}`;
 });
 
 $('mdTabAll').addEventListener('click', () => {
   $('mdTabAll').classList.add('active'); $('mdTabMonth').classList.remove('active');
   $('mdViewAll').style.display = 'block'; $('mdViewMonth').style.display = 'none';
-  $('summaryTextBox').style.display = 'none';
-  if (state.leads.length) {
-    const first = state.leads.map(l => l.createdDate).filter(Boolean).sort()[0];
-    $('mdFromDate').value = first;
-    $('mdToDate').value = todayStr();
-  }
 });
 
-function formatDateDayMonth(d) {
-  const m = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'][d.getMonth()];
-  return `${d.getDate()} ${m}`;
-}
-
-function renderSummaryText() {
-  const from = $('mdFromDate').value;
-  const to = $('mdToDate').value;
-  if (!from || !to) { toast('Оберіть дати', true); return; }
-  if (from > to) { toast('Дата «з» не може бути пізніше за дату «по»', true); return; }
-  const R = rate();
-  const r = calc().periodSummary(from, to);
-  const both = v => `<b>${fmtEUR(v)} = ${fmtUAH(v * R)}</b>`;
-
-  let text = `З ${formatDateDayMonth(parseDateStr(from))} по ${formatDateDayMonth(parseDateStr(to))} ти фактично заробив ${both(r.myFact)}, а потенційно очікуєш з боргів ще ${both(r.myPotential)}.<br><br>`;
-  if (r.carryOverAmount > 0) text += `(У твій фактичний заробіток також увійшло ${both(r.carryOverAmount)} з договорів минулого місяця).<br><br>`;
-  if (r.contractCount > 0) {
-    text += `При цьому <b>${r.contractCount}</b> клієнт(ів) підписали договір у цей період. `;
-    if (r.contractNextMonth > 0) {
-      text += `Це означає, що ${both(r.contractThisMonth)} пішло у факт зараз, а ${both(r.contractNextMonth)} гарантовано перейде на наступний місяць.<br><br>`;
-      text += `По факту ти заробив сумарно ${both(r.grossTotal)}, але з них ${both(r.contractNextMonth)} увійшло в наступний місяць. Тому твій чистий заробіток саме за цей період становить ${both(r.pureTotal)}.`;
-    } else {
-      text += `Обидві половини їхніх виплат (${both(r.contractThisMonth * 2)}) потрапили в цей період.<br><br>По факту твій чистий сумарний дохід (факт + борги) за цей період становить ${both(r.pureTotal)}.`;
-    }
-  } else {
-    text += `По факту твій чистий сумарний дохід (факт + борги) за цей період становить ${both(r.pureTotal)}.`;
-  }
-  const box = $('summaryTextBox');
-  box.innerHTML = text;
-  box.style.display = 'block';
-}
-
-$('btnShowSummary').addEventListener('click', renderSummaryText);
 $('btnOpenStatsTop').addEventListener('click', () => openModal('modalStats'));
 $('btnOpenConversion').addEventListener('click', () => openModal('modalConversion'));
 $('btnCalcConversion').addEventListener('click', () => {

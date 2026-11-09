@@ -51,7 +51,7 @@ body { background: var(--ink); color: var(--text); font-family: var(--font-body)
 .tab:hover { color: var(--text); }
 .tab.active { color: var(--ink); background: var(--gold); font-weight: 600; }
 
-.ledger__figures { display: grid; grid-template-columns: 1fr 2fr 2fr 1fr; gap: 12px; margin-top: 12px; }
+.ledger__figures { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
 .figure-group { display: flex; flex-direction: column; gap: 4px; }
 .figure-group__label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-dim); text-align: center; }
 .figure-group__row { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: var(--radius); overflow: hidden; flex: 1; }
@@ -300,3 +300,44 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
 .st-row--total .st-row__name { font-weight: 700; }
 .st-row--total .st-row__val b { font-size: 18px; }
 .st-row--zero { display: none; }
+
+/* v48: шапка — 4 чіткі картки */
+.figure-card { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.figure-card__label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); }
+.figure-card__value { font-size: 26px; line-height: 1.15; }
+.figure-card__uah { font-size: 12px; color: var(--text-muted); }
+.figure-card__sub { font-size: 11.5px; color: var(--text-muted); line-height: 1.4; margin-top: 2px; }
+.figure-card--clients .figure-card__value { color: var(--text); }
+.figure-card--mine { background: var(--surface-3); }
+.figure-card--mine .figure-card__value { color: var(--green); }
+.figure-card--wait .figure-card__value { color: var(--gold); }
+.figure-card--owed .figure-card__value { color: var(--red); }
+
+/* v48: «Повна статистика» — блоки з двома колонками */
+.st2-note { font-size: 12px; color: var(--text-muted); margin: 0 0 14px; line-height: 1.5; }
+.st2-card { border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 16px 6px; margin-bottom: 12px; background: var(--surface); }
+.st2-card--new { border-left: 3px solid var(--green); }
+.st2-card--carry { border-left: 3px solid var(--blue); }
+.st2-card--wait { border-left: 3px solid var(--gold); }
+.st2-card--total { background: var(--surface-3); }
+.st2-title { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+.st2-title em { font-style: normal; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text-muted); margin-left: 6px; }
+.st2-head, .st2-row { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: 12px; align-items: center; }
+.st2-head { font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; text-align: right; padding-bottom: 4px; border-bottom: 1px solid var(--rule); }
+.st2-row { padding: 10px 0; border-bottom: 1px dashed var(--rule); }
+.st2-row:last-child { border-bottom: 0; }
+.st2-row--zero { display: none; }
+.st2-name { font-size: 13.5px; }
+.st2-name small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+.st2-cell { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.st2-cell b { font-size: 15px; }
+.st2-cell--my b { color: var(--green); }
+.st2-cell span { font-size: 11px; color: var(--text-muted); }
+.st2-card--total .st2-name { font-weight: 700; }
+.st2-card--total .st2-cell b { font-size: 18px; }
+.st2-card--wait .st2-cell--my b { color: var(--gold); }
+@media (max-width: 1100px) { .ledger__figures { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 700px) {
+  .ledger__figures { grid-template-columns: 1fr; }
+  .st2-head, .st2-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+}

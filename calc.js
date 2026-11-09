@@ -260,6 +260,8 @@ export function createCalc(data, now = new Date()) {
     const newFact = sumFact(monthLeads);
     const contractCarryFact = sumFact(contractPrev);
     const contractCarryMoney = contractPrev.reduce((s, l) => s + toNum(l.price) / 2, 0);
+    const newClientsCount = monthLeads.filter(l => !l.cancelled).length;
+    const newPaid = newMonth ? monthVolume(month) : monthLeads.reduce((s, l) => s + leadPaidTotal(l, month), 0);
     const topupFact = sumFact(doplataPrev);
     const topupMoney = doplataPrev.reduce((s, l) => s + actualPaidInMonth(l, month), 0);
     // що перейде на наступний місяць з договорів цього місяця
@@ -286,7 +288,7 @@ export function createCalc(data, now = new Date()) {
       clientPaidFact, clientPotentialMonth, myFact, myPotentialMonth, myTotalMonth,
       clientPaidAllTime, clientPotentialFull, myFactAllTime, myPotentialFull,
       expectedPayout, forecastEUR, paidOutEUR,
-      newMonth, newFact, contractCarryFact, contractCarryMoney, topupFact, topupMoney, contractNextFact, contractNextMoney
+      newMonth, newClientsCount, newPaid, newFact, contractCarryFact, contractCarryMoney, topupFact, topupMoney, contractNextFact, contractNextMoney
     };
   }
 
