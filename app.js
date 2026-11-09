@@ -156,14 +156,15 @@ function renderDashboard() {
   const d = calc().dashboard(state.currentMonth, new Date());
   const R = rate();
   const pair = (id, eur) => { $(id).textContent = fmtEUR(eur); $(id + 'UAH').textContent = fmtUAH(eur * R); };
-  const carry = d.contractCarryFact + d.topupFact;
-  const waitTotal = d.myPotentialMonth + d.contractNextFact;
   $('figVolume').textContent = fmtEUR(d.clientPaidFact);
-  $('figVolumeSub').textContent = `Нових клієнтів: ${d.newClientsCount}` + (d.newMonth ? ' · обʼєм по місяцю створення' : '');
+  $('figVolumeUAH').textContent = fmtUAH(d.clientPaidFact * R);
+  $('figVolumeSub').textContent = `Нових клієнтів: ${d.newClientsCount}` + (d.newMonth ? ' · обʼєм у місяці створення клієнта' : '');
+  pair('figNew', d.newFact);
+  pair('figCarry', d.contractCarryFact + d.topupFact);
   pair('figMyFact', d.myFact);
-  $('figMyFactSub').textContent = `нові ${fmtEUR(d.newFact)} · з минулих місяців ${fmtEUR(carry)}`;
-  pair('figMyPotential', waitTotal);
-  $('figMyPotentialSub').textContent = `борги ${fmtEUR(d.myPotentialMonth)} · договори на наступний місяць ${fmtEUR(d.contractNextFact)}`;
+  pair('figDebt', d.myPotentialMonth);
+  pair('figNext', d.contractNextFact);
+  pair('figMyPotential', d.myPotentialMonth + d.contractNextFact);
   pair('figOwed', d.expectedPayout);
   renderStatsFigures(d);
 }
@@ -190,7 +191,6 @@ function renderStatsFigures(dIn) {
   row('mdTotal', d.clientPaidFact, d.myFact, d.newMonth ? 'Обʼєм = лише нові клієнти (і їхні доплати). Заробіток = нові + з минулих місяців' : '');
   row('mdDebt', d.clientPotentialMonth, d.myPotentialMonth, 'Ще не доплатили за тарифом', true);
   row('mdNext', d.contractNextMoney, d.contractNextFact, 'Обʼєм цих договорів уже в цьому місяці, зарплата прийде у наступному', true);
-  row('mdForecast', null, d.forecastEUR, 'Орієнтовно, за темпом цього місяця');
   const allRow = (id, eur, sub) => {
     $(id + '_EUR').textContent = fmtEUR(eur);
     $(id + '_UAH').textContent = fmtUAH(eur * R);
@@ -226,7 +226,7 @@ function dealRowHtml(lead, monthToPass) {
       <td class="mono positive">${fmtL(lead, paidInView)}${showTotalHint ? `<div style="font-size: 10.5px; color: var(--text-muted); font-weight: normal; margin-top: 3px;">Всього: ${fmtL(lead, totalPaidAll)}</div>` : ''}</td>
       <td class="mono ${rem > 0 ? 'negative' : 'muted'}">${fmtL(lead, rem)}</td>
       <td class="mono muted">${esc(pctLabel(lead))}</td>
-      <td class="mono accent">${fmtL(lead, factEUR)}<div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 4px;">${isUsdLead(lead) ? '≈ ' + fmtEUR(factEUR) + ' · ' : ''}${fmtUAH(factEUR * R)}</div></td>
+      <td class="mono accent">${fmtUAH(factEUR * R)}<div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 4px;">${isUsdLead(lead) ? fmtL(lead, factEUR) + ' · ' : ''}${fmtEUR(factEUR)}</div></td>
       <td><span class="badge ${statusClass(st)}">${esc(st)}</span></td>
       <td class="mono muted">${esc(lead.createdDate)}</td><td><button class="btn btn--tiny open-lead">Відкрити</button></td>
     </tr>`;

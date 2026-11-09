@@ -341,3 +341,30 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
   .ledger__figures { grid-template-columns: 1fr; }
   .st2-head, .st2-row { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 }
+
+/* v49: компактніше, гривня на першому місці, заробіток — великими цифрами по частинах */
+.ledger__figures { grid-template-columns: 0.9fr 2.5fr 2.1fr 1fr; gap: 10px; }
+.figure-card { padding: 11px 14px; gap: 6px; }
+.figure-card__label { font-size: 10.5px; }
+.fc-item__big { font-size: 17px; line-height: 1.2; display: block; }
+.fc-item__small { font-size: 11px; color: var(--text-muted); display: block; }
+.figure-card--clients .fc-item__big { color: var(--text); }
+.figure-card--owed .fc-item__big { color: var(--red); }
+.fc-split { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fc-item { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-left: 10px; border-left: 1px solid var(--rule); }
+.fc-item:first-child { border-left: 0; padding-left: 0; }
+.fc-item__label { font-size: 10.5px; color: var(--text-muted); line-height: 1.3; min-height: 27px; }
+.figure-card--mine .fc-item__big { color: var(--green); }
+.figure-card--wait .fc-item__big { color: var(--gold); }
+.fc-item--total .fc-item__big { font-size: 19px; }
+.fc-item--total .fc-item__label { color: var(--text); font-weight: 600; }
+.st2-cell b { font-size: 14px; }
+.st2-cell--my b { font-size: 15px; }
+.st2-card--total .st2-cell b { font-size: 16px; }
+.st2-name { font-size: 13px; }
+@media (max-width: 1250px) { .ledger__figures { grid-template-columns: 1fr 1fr; } .figure-card--mine, .figure-card--wait { grid-column: span 2; } }
+@media (max-width: 700px) { .ledger__figures { grid-template-columns: 1fr; } .figure-card--mine, .figure-card--wait { grid-column: auto; } .fc-split { grid-template-columns: 1fr; } .fc-item { border-left: 0; padding-left: 0; } .fc-item__label { min-height: 0; } }
+.fc-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); }
+.fc-item__big { white-space: nowrap; }
+.fc-item--total .fc-item__big { font-size: 17px; }
+.fc-item__label { overflow-wrap: anywhere; }
