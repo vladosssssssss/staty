@@ -468,6 +468,7 @@ function openLeadDetail(id) {
   const newRules = usesNewRules(lead);
   $('ldCommissionPercent').value = newRules ? baseCommissionPct(lead.direction, lead.tariff) : lead.commissionPercent;
   $('ldCommissionPercent').disabled = newRules;
+  $('ldCommissionLabel').textContent = newRules ? 'Базовий %, від суми мінус 5 % податку' : 'Комісія, %';
   $('ldCommissionPercent').title = newRules ? 'За новими умовами відсоток визначається автоматично (мінус 5 % податку)' : '';
   $('ldStatus').value = lead.status === CONTRACT ? CONTRACT : computeStatusByPaidAmount(lead.status, lead.price, calc().actualPaidTotal(lead.id));
   $('ldComment').value = lead.comment || '';

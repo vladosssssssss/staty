@@ -368,3 +368,16 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
 .fc-item__big { white-space: nowrap; }
 .fc-item--total .fc-item__big { font-size: 17px; }
 .fc-item__label { overflow-wrap: anywhere; }
+
+/* v51: вирівнювання */
+.search-box input[type="text"] { background: transparent; border: none; padding: 0 4px; min-height: 0; height: 100%; border-radius: 0; }
+.toolbar { align-items: stretch; }
+.month-nav, .search-box, .toolbar > .btn { min-height: 44px; box-sizing: border-box; }
+.toolbar > .btn { display: inline-flex; align-items: center; justify-content: center; padding-top: 0; padding-bottom: 0; }
+.figure-card { justify-content: flex-start; }
+.figure-card__sub { margin-top: auto; padding-top: 4px; }
+.figure-card--clients .fc-item__label, .figure-card--owed .fc-item__label { min-height: 27px; }
+.mini-fig { justify-content: flex-start; padding-top: 11px; }
+@media (max-width: 700px) { .search-box input[type="text"] { min-height: 44px; } }
+.figure-card--clients .fc-item__big, .figure-card--owed .fc-item__big { margin-top: -4px; }
+.figure-card--clients .fc-item__small, .figure-card--owed .fc-item__small { margin-top: -4px; }
