@@ -11,5 +11,6 @@ window.APP_CONFIG = {
   // Лише цей акаунт бачить дані (так само прописано в firestore.rules)
   OWNER_EMAIL: "vladpetrenko66@gmail.com",
   // Курс за замовчуванням; змінюється у вкладці «Тарифи та ціни» і зберігається в базі
-  UAH_RATE: 50.795
+  UAH_RATE: 50.795,
+  USD_PER_EUR: 1.1165
 };

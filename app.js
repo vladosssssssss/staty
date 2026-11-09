@@ -2,7 +2,8 @@ import * as db from './db.js';
 import {
   CONTRACT, toNum, round2, monthKey, shiftMonth, todayStr, parseDateStr, isValidDateStr,
   computeStatusByPaidAmount, normalizeLead, normalizePayment, normalizePayout, normalizeSetting,
-  createCalc, calcConversion, statusClass
+  createCalc, calcConversion, statusClass, baseCommissionPct, usesNewRules, NEW_RULES_FROM,
+  USD_DIRECTIONS, DEFAULT_USD_PER_EUR, isUsdLead
 } from './calc.js';
 
 const CFG = window.APP_CONFIG;
@@ -35,6 +36,15 @@ function genId(prefix) {
 function fmtMoney(n, cur) { return toNum(n).toLocaleString('uk-UA', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ' + (cur || '€'); }
 const fmtEUR = n => fmtMoney(n, '€');
 const fmtUAH = n => fmtMoney(n, '₴');
+const fmtUSD = n => fmtMoney(n, '$');
+// Агенція: суми клієнта — в $, підсумки CRM — в € за курсом (скільки $ за 1 €).
+const usdPerEur = () => toNum(state.meta.app && state.meta.app.usdPerEur) || toNum(CFG.USD_PER_EUR) || DEFAULT_USD_PER_EUR;
+const isUsdDirection = d => USD_DIRECTIONS.includes(d);
+const fmtDir = (direction, n) => isUsdDirection(direction) ? fmtUSD(n) : fmtEUR(n);
+// сума, збережена в валюті ліда ($ або €)
+const fmtN = (lead, n) => isUsdLead(lead) ? fmtUSD(n) : fmtEUR(n);
+// сума з розрахунків CRM (завжди €) у валюті ліда
+const fmtL = (lead, eur) => isUsdLead(lead) ? fmtUSD(round2(toNum(eur) * usdPerEur())) : fmtEUR(eur);
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function toast(msg, isError) {
@@ -97,7 +107,7 @@ function dateField(id) { const v = $(id).value; return isValidDateStr(v) ? v : t
 
 /* ============================ допоміжні вибірки ============================ */
 
-const DIRECTION_ORDER = ['Швидкий старт з блогу', 'Продажі 24/7', 'Big Money', 'Офлайн робота'];
+const DIRECTION_ORDER = ['Швидкий старт з блогу', 'Продажі 24/7', 'Big Money', 'Агенція'];
 const getDirections = () => {
   const seen = [];
   state.settings.forEach(s => { if (!seen.includes(s.direction)) seen.push(s.direction); });
@@ -128,6 +138,8 @@ function renderAll() {
   $('monthPicker').value = state.currentMonth;
   const rateInput = $('sRate');
   if (document.activeElement !== rateInput) rateInput.value = rate();
+  const rateUsdInput = $('sRateUsd');
+  if (document.activeElement !== rateUsdInput) rateUsdInput.value = usdPerEur();
   if ($('modalLead').classList.contains('open')) refreshLeadModal();
   if ($('modalStats').classList.contains('open')) renderStatsFigures();
   renderSync();
@@ -143,26 +155,51 @@ function renderSync() {
 function renderDashboard() {
   const d = calc().dashboard(state.currentMonth, new Date());
   const R = rate();
-  const set = (id, v) => { $(id).textContent = v; };
-  set('figMyFact', fmtEUR(d.myFact)); set('figMyFactUAH', fmtUAH(d.myFact * R));
-  $('figMyPotential').innerHTML = `${fmtEUR(d.myPotentialMonth)} <span style="color:var(--text-dim)">/</span> ${fmtEUR(d.myPotentialFull)}`;
-  $('figMyPotentialUAH').innerHTML = `${fmtUAH(d.myPotentialMonth * R)} <span style="color:var(--text-dim)">/</span> ${fmtUAH(d.myPotentialFull * R)}`;
-  set('figMyTotalMonth', fmtEUR(d.myTotalMonth)); set('figMyTotalMonthUAH', fmtUAH(d.myTotalMonth * R));
-  set('figForecast', fmtEUR(d.forecastEUR)); set('figForecastUAH', fmtUAH(d.forecastEUR * R));
-  set('figOwed', fmtEUR(d.expectedPayout)); set('figOwedUAH', fmtUAH(d.expectedPayout * R));
+  const pair = (id, eur) => { $(id).textContent = fmtEUR(eur); $(id + 'UAH').textContent = fmtUAH(eur * R); };
+  pair('figVolume', d.clientPaidFact);
+  pair('figNewFact', d.newFact);
+  pair('figCarryFact', d.contractCarryFact + d.topupFact);
+  pair('figMyFact', d.myFact);
+  pair('figMyPotential', d.myPotentialMonth);
+  pair('figOwed', d.expectedPayout);
   renderStatsFigures(d);
 }
 
 function renderStatsFigures(dIn) {
   const d = dIn || calc().dashboard(state.currentMonth, new Date());
   const R = rate();
-  const pair = (id, eur) => { $(id + '_EUR').textContent = fmtEUR(eur); $(id + '_UAH').textContent = fmtUAH(eur * R); };
-  $('mdWaitMonth').textContent = fmtEUR(d.myPotentialMonth); $('mdWaitMonthUAH').textContent = fmtUAH(d.myPotentialMonth * R);
-  $('mdWaitAll').textContent = fmtEUR(d.myPotentialFull); $('mdWaitAllUAH').textContent = fmtUAH(d.myPotentialFull * R);
-  pair('mdClientPaidMonth', d.clientPaidFact); pair('mdClientDebtMonth', d.clientPotentialMonth);
-  pair('mdMyFactMonth', d.myFact); pair('mdMyDebtMonth', d.myPotentialMonth);
-  pair('mdClientPaidAll', d.clientPaidAllTime); pair('mdClientDebtAll', d.clientPotentialFull);
-  pair('mdMyFactAll', d.myFactAllTime); pair('mdMyDebtAll', d.myPotentialFull);
+  // рядок: назва, підпис, сума в € і ₴; нульові необов'язкові рядки ховаємо
+  const row = (id, eur, sub, hideIfZero) => {
+    $(id + '_EUR').textContent = fmtEUR(eur);
+    $(id + '_UAH').textContent = fmtUAH(eur * R);
+    $(id + '_SUB').textContent = sub || '';
+    $(id).classList.toggle('st-row--zero', !!hideIfZero && Math.abs(eur) < 0.005 && !sub);
+  };
+  const monthName = state.currentMonth;
+  $('mdVolLabel').textContent = d.newMonth ? `Обʼєм місяця ${monthName}` : `Сплатили клієнти за ${monthName}`;
+  $('mdVolume_EUR').textContent = fmtEUR(d.clientPaidFact);
+  $('mdVolume_SUB').textContent = d.newMonth
+    ? 'Оплати клієнтів, створених у цьому місяці (договір — повна сума одразу; доплати наступних місяців додаються сюди)'
+    : 'Фактичні оплати клієнтів за місяць';
+  $('mdPctNote').textContent = d.newMonth ? '· 8 % від суми оплати мінус 5 % податку' : '· за відсотком кожного ліда';
+  row('mdNew', d.newFact, d.newMonth ? 'З оплат нових клієнтів; договір — половина' : '');
+  row('mdCarry', d.contractCarryFact, d.contractCarryMoney > 0 ? `Клієнти заплатили (друга половина): ${fmtEUR(d.contractCarryMoney)}` : '', true);
+  row('mdTopup', d.topupFact, d.topupMoney > 0 ? `Клієнти доплатили: ${fmtEUR(d.topupMoney)}` : '', true);
+  row('mdTotal', d.myFact, '');
+  row('mdDebt', d.myPotentialMonth, d.clientPotentialMonth > 0 ? `Борг клієнтів: ${fmtEUR(d.clientPotentialMonth)}` : '', true);
+  row('mdNext', d.contractNextFact, d.contractNextMoney > 0 ? `Клієнти заплатять: ${fmtEUR(d.contractNextMoney)}` : '', true);
+  row('mdForecast', d.forecastEUR, 'Орієнтовно, за темпом цього місяця');
+  row('mdAllPaid', d.clientPaidAllTime, '');
+  row('mdAllDebt', d.clientPotentialFull, '');
+  row('mdAllFact', d.myFactAllTime, '');
+  row('mdAllMyDebt', d.myPotentialFull, '');
+}
+
+// Ефективний % від суми оплати: для нових умов — базовий % мінус 5 % податку (напр. 8 % → 7,6 %)
+function pctLabel(lead) {
+  if (!usesNewRules(lead)) return `${lead.commissionPercent}%`;
+  const v = Math.round(calc().factor(lead) * 10000) / 100;
+  return `${String(v).replace('.', ',')}%`;
 }
 
 function dealRowHtml(lead, monthToPass) {
@@ -178,11 +215,11 @@ function dealRowHtml(lead, monthToPass) {
       <td class="mono muted">#${esc(lead.number)}</td>
       <td><div class="cell-strong">${esc(lead.clientName || '—')}</div><div class="cell-sub">${esc(lead.nickname || '')}</div></td>
       <td><div class="cell-strong">${esc(lead.direction)}</div><div class="cell-sub">${esc(lead.tariff)}</div></td>
-      <td class="mono">${fmtEUR(lead.price)}</td>
-      <td class="mono positive">${fmtEUR(paidInView)}${showTotalHint ? `<div style="font-size: 10.5px; color: var(--text-muted); font-weight: normal; margin-top: 3px;">Всього: ${fmtEUR(totalPaidAll)}</div>` : ''}</td>
-      <td class="mono ${rem > 0 ? 'negative' : 'muted'}">${fmtEUR(rem)}</td>
-      <td class="mono muted">${esc(lead.commissionPercent)}%</td>
-      <td class="mono accent">${fmtEUR(factEUR)}<div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 4px;">${fmtUAH(factEUR * R)}</div></td>
+      <td class="mono">${fmtN(lead, lead.price)}</td>
+      <td class="mono positive">${fmtL(lead, paidInView)}${showTotalHint ? `<div style="font-size: 10.5px; color: var(--text-muted); font-weight: normal; margin-top: 3px;">Всього: ${fmtL(lead, totalPaidAll)}</div>` : ''}</td>
+      <td class="mono ${rem > 0 ? 'negative' : 'muted'}">${fmtL(lead, rem)}</td>
+      <td class="mono muted">${esc(pctLabel(lead))}</td>
+      <td class="mono accent">${fmtL(lead, factEUR)}<div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 4px;">${isUsdLead(lead) ? '≈ ' + fmtEUR(factEUR) + ' · ' : ''}${fmtUAH(factEUR * R)}</div></td>
       <td><span class="badge ${statusClass(st)}">${esc(st)}</span></td>
       <td class="mono muted">${esc(lead.createdDate)}</td><td><button class="btn btn--tiny open-lead">Відкрити</button></td>
     </tr>`;
@@ -293,7 +330,7 @@ function populatePriceOptions(direction, tariff) {
     { label: 'Знижка 1', value: s.price2 },
     { label: 'Знижка 2 / діагностика', value: s.price3 }
   ];
-  wrap.innerHTML = opts.map((o, i) => `<label class="price-opt"><input type="radio" name="fPriceOpt" value="${esc(o.value)}" ${i === 0 ? 'checked' : ''}><span class="price-opt__label">${o.label}</span><span class="price-opt__dash">—</span><span class="price-opt__value mono">${fmtEUR(o.value)}</span></label>`).join('');
+  wrap.innerHTML = opts.map((o, i) => `<label class="price-opt"><input type="radio" name="fPriceOpt" value="${esc(o.value)}" ${i === 0 ? 'checked' : ''}><span class="price-opt__label">${o.label}</span><span class="price-opt__dash">—</span><span class="price-opt__value mono">${fmtDir(direction, o.value)}</span></label>`).join('');
 }
 
 const allLoaded = () => Object.values(state.loaded).every(Boolean);
@@ -383,14 +420,15 @@ $('btnSaveLead').addEventListener('click', async e => {
   if (firstPayment < 0) { toast('Сума платежу не може бути від’ємною', true); return; }
   if (rawStatus === 'Оплачено повністю' && firstPayment <= 0) firstPayment = price;
   if (rawStatus === CONTRACT) firstPayment = 0;
-  if (firstPayment > price && !confirm(`Перший платіж (${fmtEUR(firstPayment)}) більший за ціну тарифу (${fmtEUR(price)}). Продовжити?`)) return;
+  if (firstPayment > price && !confirm(`Перший платіж (${fmtDir(direction, firstPayment)}) більший за ціну тарифу (${fmtDir(direction, price)}). Продовжити?`)) return;
 
   const date = isValidDateStr($('fDate').value) ? $('fDate').value : todayStr();
   const leadId = state.draft.leadId || genId('lead');
   const paymentId = state.draft.leadPaymentId || genId('pay');
   const lead = {
     id: leadId, clientName, nickname, direction, tariff, price,
-    commissionPercent: toNum(s.percent),
+    currency: isUsdDirection(direction) ? 'USD' : 'EUR',
+    commissionPercent: (date.substring(0, 7) >= NEW_RULES_FROM) ? baseCommissionPct(direction, tariff) : toNum(s.percent),
     status: computeStatusByPaidAmount(rawStatus, price, firstPayment),
     comment: $('fComment').value.trim(), createdDate: date, month: date.substring(0, 7), cancelled: false
   };
@@ -418,7 +456,12 @@ function openLeadDetail(id) {
   $('ldClientName').value = lead.clientName || '';
   $('ldNickname').value = lead.nickname || '';
   $('ldPrice').value = lead.price;
-  $('ldCommissionPercent').value = lead.commissionPercent;
+  $('ldPriceLabel').textContent = isUsdLead(lead) ? 'Ціна тарифу, $' : 'Ціна тарифу, €';
+  $('pAmountLabel').textContent = isUsdLead(lead) ? 'Сума, $' : 'Сума, €';
+  const newRules = usesNewRules(lead);
+  $('ldCommissionPercent').value = newRules ? baseCommissionPct(lead.direction, lead.tariff) : lead.commissionPercent;
+  $('ldCommissionPercent').disabled = newRules;
+  $('ldCommissionPercent').title = newRules ? 'За новими умовами відсоток визначається автоматично (мінус 5 % податку)' : '';
   $('ldStatus').value = lead.status === CONTRACT ? CONTRACT : computeStatusByPaidAmount(lead.status, lead.price, calc().actualPaidTotal(lead.id));
   $('ldComment').value = lead.comment || '';
   $('ldCancelled').checked = !!lead.cancelled;
@@ -439,27 +482,27 @@ function renderLeadDetailSummary(lead) {
   const c = calc();
   const R = rate();
   const factEUR = c.leadCommissionFact(lead);
-  const fullCommissionEUR = toNum(lead.price) * (toNum(lead.commissionPercent) / 100);
+  const fullCommissionEUR = (isUsdLead(lead) ? toNum(lead.price) / usdPerEur() : toNum(lead.price)) * c.factor(lead);
   const paid = c.leadPaidTotal(lead);
-  const tariffHTML = `<div style="font-weight:400; color:var(--text-muted); font-family:var(--font-body); line-height:1.3; text-align:center; white-space:normal; width:100%; word-break:break-word;">${esc(lead.direction)}<br><span style="color:var(--text); font-weight:700;">${esc(lead.tariff)}</span> <span style="font-size: 10px; color: var(--gold);">(${esc(lead.commissionPercent)}%)</span></div>`;
+  const tariffHTML = `<div style="font-weight:400; color:var(--text-muted); font-family:var(--font-body); line-height:1.3; text-align:center; white-space:normal; width:100%; word-break:break-word;">${esc(lead.direction)}<br><span style="color:var(--text); font-weight:700;">${esc(lead.tariff)}</span> <span style="font-size: 10px; color: var(--gold);">(${esc(pctLabel(lead))})</span></div>`;
   $('ldSummary').innerHTML = `
     <div class="mini-fig"><span>Тариф</span>${tariffHTML}</div>
     <div class="mini-fig"><span>Ціна</span>
-      <b class="mono">${fmtEUR(lead.price)}
-        <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 500; margin-top: 4px;">Мої: <span style="color:var(--gold)">${fmtEUR(fullCommissionEUR)}</span> = <span style="color:var(--gold)">${fmtUAH(fullCommissionEUR * R)}</span></div>
+      <b class="mono">${fmtN(lead, lead.price)}
+        <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 500; margin-top: 4px;">Мої: <span style="color:var(--gold)">${fmtL(lead, fullCommissionEUR)}</span>${isUsdLead(lead) ? ' ≈ <span style="color:var(--gold)">' + fmtEUR(fullCommissionEUR) + '</span>' : ''} = <span style="color:var(--gold)">${fmtUAH(fullCommissionEUR * R)}</span></div>
       </b></div>
     <div class="mini-fig"><span>Сплачено</span>
-      <b class="mono positive">${fmtEUR(paid)}
-        <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 500; margin-top: 4px;">Факт: <span style="color:var(--gold)">${fmtEUR(factEUR)}</span> = <span style="color:var(--gold)">${fmtUAH(factEUR * R)}</span></div>
+      <b class="mono positive">${fmtL(lead, paid)}
+        <div style="font-size: 10.5px; color: var(--text-muted); font-weight: 500; margin-top: 4px;">Факт: <span style="color:var(--gold)">${fmtL(lead, factEUR)}</span>${isUsdLead(lead) ? ' ≈ <span style="color:var(--gold)">' + fmtEUR(factEUR) + '</span>' : ''} = <span style="color:var(--gold)">${fmtUAH(factEUR * R)}</span></div>
       </b></div>
-    <div class="mini-fig"><span>Залишок</span><b class="mono negative">${fmtEUR(c.leadRemaining(lead))}</b></div>`;
+    <div class="mini-fig"><span>Залишок</span><b class="mono negative">${fmtL(lead, c.leadRemaining(lead))}</b></div>`;
 }
 
 function renderLeadPayments(lead) {
   const tbody = $('ldPaymentsBody');
   const list = leadPayments(lead.id).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
   if (!list.length) { tbody.innerHTML = `<tr><td colspan="5" class="empty-row">Платежів ще немає</td></tr>`; return; }
-  tbody.innerHTML = list.map((p, i) => `<tr class="${p.cancelled ? 'row--cancelled' : ''}" data-id="${esc(p.id)}"><td class="mono muted">${esc(p.date)}</td><td class="mono ${p.cancelled ? 'muted' : 'positive'}">${fmtEUR(p.amount)}</td><td style="text-align:left;">${esc(p.comment || ('Платіж ' + (i + 1)))}</td><td><span class="badge ${p.cancelled ? 'badge--red' : 'badge--green'}">${p.cancelled ? 'Скасовано' : 'Зараховано'}</span></td><td><div style="display:flex;gap:6px;justify-content:center;"><button class="btn btn--tiny edit-payment">Ред.</button><button class="btn btn--tiny toggle-payment">${p.cancelled ? 'Відновити' : 'Скасувати'}</button><button class="btn btn--tiny btn--danger delete-payment" title="Видалити повністю" style="padding:4px 8px;font-size:14px;line-height:1;">✕</button></div></td></tr>`).join('');
+  tbody.innerHTML = list.map((p, i) => `<tr class="${p.cancelled ? 'row--cancelled' : ''}" data-id="${esc(p.id)}"><td class="mono muted">${esc(p.date)}</td><td class="mono ${p.cancelled ? 'muted' : 'positive'}">${fmtN(lead, p.amount)}</td><td style="text-align:left;">${esc(p.comment || ('Платіж ' + (i + 1)))}</td><td><span class="badge ${p.cancelled ? 'badge--red' : 'badge--green'}">${p.cancelled ? 'Скасовано' : 'Зараховано'}</span></td><td><div style="display:flex;gap:6px;justify-content:center;"><button class="btn btn--tiny edit-payment">Ред.</button><button class="btn btn--tiny toggle-payment">${p.cancelled ? 'Відновити' : 'Скасувати'}</button><button class="btn btn--tiny btn--danger delete-payment" title="Видалити повністю" style="padding:4px 8px;font-size:14px;line-height:1;">✕</button></div></td></tr>`).join('');
 }
 
 $('btnSaveLeadEdit').addEventListener('click', async e => {
@@ -545,7 +588,7 @@ $('ldPaymentsBody').addEventListener('click', async e => {
   }
 
   if (e.target.classList.contains('delete-payment')) {
-    if (!confirm(`Видалити платіж ${fmtEUR(payment.amount)} від ${payment.date} назавжди?`)) return;
+    if (!confirm(`Видалити платіж ${fmtN(lead, payment.amount)} від ${payment.date} назавжди?`)) return;
     const nextStatus = computeStatusByPaidAmount(lead.status, lead.price, paidAfter(lead.id, { excludeId: id }));
     await guarded(e.target, 'Видалення...', () => db.deletePayment({ id, leadId: lead.id, leadStatus: nextStatus }), 'Платіж видалено');
   }
@@ -559,7 +602,7 @@ $('btnAddPayment').addEventListener('click', () => {
   $('paymentModalTitle').textContent = 'Новий платіж';
   $('btnSavePayment').textContent = 'Додати';
   const rem = calc().leadRemaining(lead);
-  $('pAmount').value = rem > 0 ? String(round2(rem)) : '';
+  $('pAmount').value = rem > 0 ? String(round2(isUsdLead(lead) ? rem * usdPerEur() : rem)) : '';
   $('pDate').value = todayStr();
   const count = leadPayments(lead.id).length + 1;
   const names = ['Перший', 'Другий', 'Третій', 'Четвертий', 'П’ятий', 'Шостий', 'Сьомий', 'Восьмий', 'Дев’ятий', 'Десятий'];
@@ -581,7 +624,7 @@ $('btnSavePayment').addEventListener('click', async e => {
   const keepsActive = !(editing && editing.cancelled);
   const newPaid = base + (keepsActive ? amount : 0);
   if (lead.status !== CONTRACT && keepsActive && newPaid > toNum(lead.price) + 0.005 &&
-      !confirm(`Загальна сума платежів (${fmtEUR(newPaid)}) перевищить ціну тарифу (${fmtEUR(lead.price)}). Продовжити?`)) return;
+      !confirm(`Загальна сума платежів (${fmtN(lead, newPaid)}) перевищить ціну тарифу (${fmtN(lead, lead.price)}). Продовжити?`)) return;
   const nextStatus = computeStatusByPaidAmount(lead.status, lead.price, newPaid);
 
   if (editing) {
@@ -690,6 +733,12 @@ $('settingsGroups').addEventListener('click', async e => {
   }
 });
 function numField2(row, sel) { return toNum(row.querySelector(sel).value); }
+
+$('btnSaveRateUsd').addEventListener('click', async e => {
+  const v = numField('sRateUsd');
+  if (!(v > 0) || v > 10) { toast('Вкажіть коректний курс (скільки $ за 1 €)', true); return; }
+  await guarded(e.currentTarget, 'Збереження...', () => db.saveUsdRate(v), 'Курс $ збережено');
+});
 
 $('btnSaveRate').addEventListener('click', async e => {
   const v = numField('sRate');

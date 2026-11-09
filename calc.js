@@ -4,6 +4,24 @@
 
 export const CONTRACT = 'Оплачено повністю (договір)';
 export const BRON_THRESHOLD_EUR = 150;
+
+// Нові умови співпраці діють для лідів, створених з цього місяця (раніші — за старими умовами).
+export const NEW_RULES_FROM = '2026-11';
+// Податок ФОП 3 групи: комісія рахується від суми оплати мінус 5 %.
+export const TAX_RATE = 0.05;
+// Агенція веде розрахунки з клієнтами в доларах: суми ліда й платежів зберігаються в $ (lead.currency === 'USD'),
+// а всі підсумки CRM рахуються в € за курсом (скільки $ за 1 €).
+export const USD_DIRECTIONS = ['Агенція'];
+export const DEFAULT_USD_PER_EUR = 1.1165;
+export const isUsdLead = l => !!l && l.currency === 'USD';
+// Базовий відсоток за новими умовами (перша ступінь). Додаткові відсотки за оборот
+// (10/12 %, 14/16 %) не рахуються автоматично — їх вносять окремо у виплату зарплати.
+export function baseCommissionPct(direction, tariff) {
+  if (direction === 'Агенція') return 10;
+  if (direction === 'Big Money') return tariff === 'Менторство' ? 10 : 12;
+  return 8;
+}
+export const usesNewRules = lead => String((lead && lead.month) || '') >= NEW_RULES_FROM;
 export const STATUSES = ['Бронь', 'Часткова оплата', 'Оплачено повністю', CONTRACT];
 
 export function toNum(v) {
@@ -37,12 +55,12 @@ export function isValidDateStr(s) {
   return todayStr(d) === s;
 }
 
-export function computeStatusByPaidAmount(status, price, paid) {
+export function computeStatusByPaidAmount(status, price, paid, threshold = BRON_THRESHOLD_EUR) {
   if (status === CONTRACT) return CONTRACT;
   const numPrice = toNum(price);
   const numPaid = toNum(paid);
   if (numPrice > 0 && numPaid >= numPrice) return 'Оплачено повністю';
-  if (numPaid >= BRON_THRESHOLD_EUR) return 'Часткова оплата';
+  if (numPaid >= threshold) return 'Часткова оплата';
   return 'Бронь';
 }
 
@@ -103,8 +121,13 @@ export function normalizeSetting(s) {
 }
 
 export function createCalc(data, now = new Date()) {
-  const leads = data.leads || [];
-  const payments = data.payments || [];
+  // $-ліди (Агенція) переводимо в € на вході: решта розрахунків працює лише з €.
+  const usdPerEur = toNum(data.meta && data.meta.app && data.meta.app.usdPerEur) || DEFAULT_USD_PER_EUR;
+  const usdToEur = 1 / usdPerEur;
+  const rawLeads = data.leads || [];
+  const usdIds = new Set(rawLeads.filter(isUsdLead).map(l => l.id));
+  const leads = rawLeads.map(l => usdIds.has(l.id) ? { ...l, price: toNum(l.price) * usdToEur } : l);
+  const payments = (data.payments || []).map(p => usdIds.has(p.leadId) ? { ...p, amount: toNum(p.amount) * usdToEur } : p);
   const payouts = data.payouts || [];
   const realMonth = monthKey(now);
 
@@ -117,6 +140,10 @@ export function createCalc(data, now = new Date()) {
 
   const paymentsOf = id => byLead.get(id) || [];
   const isContract = l => l.status === CONTRACT;
+  // Множник комісії від суми оплати: старі ліди — % ліда; нові — базовий % × (1 − 5 % податку).
+  const factor = l => usesNewRules(l)
+    ? (1 - TAX_RATE) * baseCommissionPct(l.direction, l.tariff) / 100
+    : toNum(l.commissionPercent) / 100;
   // Договір (50/50 по місяцях) діє лише для активного ліда. Скасований лід рахується
   // за фактично внесеними платежами (бронь/передоплата залишається), без залишку й потенціалу.
   const isContractActive = l => isContract(l) && !l.cancelled;
@@ -169,7 +196,7 @@ export function createCalc(data, now = new Date()) {
 
   function leadCommissionFact(lead, targetMonth) {
     if (!lead) return 0;
-    const pct = toNum(lead.commissionPercent) / 100;
+    const pct = factor(lead);
     const price = toNum(lead.price);
     if (isContractActive(lead)) {
       const total = price * pct;
@@ -184,12 +211,12 @@ export function createCalc(data, now = new Date()) {
     if (!lead || lead.cancelled) return 0;
     if (isContract(lead)) return 0;
     if (targetMonth && lead.month !== targetMonth) return 0;
-    return leadRemaining(lead) * (toNum(lead.commissionPercent) / 100);
+    return leadRemaining(lead) * factor(lead);
   }
 
   function leadStatusDisplay(lead) {
     if (lead.cancelled) return 'Скасовано';
-    return computeStatusByPaidAmount(lead.status, lead.price, actualPaidTotal(lead.id));
+    return computeStatusByPaidAmount(lead.status, lead.price, actualPaidTotal(lead.id), isUsdLead(lead) ? BRON_THRESHOLD_EUR * usdToEur : BRON_THRESHOLD_EUR);
   }
 
   function allLeadsCountForMonth(m) {
@@ -200,6 +227,16 @@ export function createCalc(data, now = new Date()) {
     return leads.filter(l => l.month === m && !l.cancelled && leadStatusDisplay(l) !== 'Бронь').length;
   }
 
+  // Обʼєм ліда: договір — повна ціна; інакше — усе, що фактично сплатив клієнт (включно з доплатами пізніших місяців).
+  function leadVolume(lead) {
+    if (isContractActive(lead)) return toNum(lead.price);
+    return actualPaidTotal(lead.id);
+  }
+  // Обʼєм місяця рахується лише для нових умов і відноситься до місяця СТВОРЕННЯ ліда.
+  function monthVolume(m) {
+    return leads.filter(l => l.month === m && usesNewRules(l)).reduce((s, l) => s + leadVolume(l), 0);
+  }
+
   function dashboard(month, today = now) {
     const monthLeads = leads.filter(l => l.month === month);
     const contractPrev = leads.filter(l => isContractActive(l) && shiftMonth(l.month, 1) === month);
@@ -208,7 +245,8 @@ export function createCalc(data, now = new Date()) {
     const newMoneyLeads = [...monthLeads, ...doplataPrev];
     const all = [...monthLeads, ...doplataPrev, ...contractPrev];
 
-    const clientPaidFact = all.reduce((s, l) => s + leadPaidTotal(l, month), 0);
+    const newMonth = month >= NEW_RULES_FROM;
+    const clientPaidFact = newMonth ? monthVolume(month) : all.reduce((s, l) => s + leadPaidTotal(l, month), 0);
     const clientPotentialMonth = monthLeads.reduce((s, l) => s + leadClientPotential(l), 0);
 
     const myFact = all.reduce((s, l) => s + leadCommissionFact(l, month), 0);
@@ -216,6 +254,18 @@ export function createCalc(data, now = new Date()) {
 
     const myPotentialMonth = monthLeads.reduce((s, l) => s + leadCommissionPotential(l, month), 0);
     const myTotalMonth = myFact + myPotentialMonth;
+
+    // Розбивка факту місяця: нові ліди / договори минулого місяця / доплати з минулих місяців
+    const sumFact = arr => arr.reduce((s, l) => s + leadCommissionFact(l, month), 0);
+    const newFact = sumFact(monthLeads);
+    const contractCarryFact = sumFact(contractPrev);
+    const contractCarryMoney = contractPrev.reduce((s, l) => s + toNum(l.price) / 2, 0);
+    const topupFact = sumFact(doplataPrev);
+    const topupMoney = doplataPrev.reduce((s, l) => s + actualPaidInMonth(l, month), 0);
+    // що перейде на наступний місяць з договорів цього місяця
+    const nextContracts = monthLeads.filter(isContractActive);
+    const contractNextFact = nextContracts.reduce((s, l) => s + toNum(l.price) * factor(l) / 2, 0);
+    const contractNextMoney = nextContracts.reduce((s, l) => s + toNum(l.price) / 2, 0);
 
     const active = leads;
     const clientPaidAllTime = active.reduce((s, l) => s + leadPaidTotal(l), 0);
@@ -235,7 +285,8 @@ export function createCalc(data, now = new Date()) {
     return {
       clientPaidFact, clientPotentialMonth, myFact, myPotentialMonth, myTotalMonth,
       clientPaidAllTime, clientPotentialFull, myFactAllTime, myPotentialFull,
-      expectedPayout, forecastEUR, paidOutEUR
+      expectedPayout, forecastEUR, paidOutEUR,
+      newMonth, newFact, contractCarryFact, contractCarryMoney, topupFact, topupMoney, contractNextFact, contractNextMoney
     };
   }
 
@@ -299,25 +350,25 @@ export function createCalc(data, now = new Date()) {
       const lead = leadById.get(p.leadId);
       if (!lead || isContractActive(lead)) return;
       const pDate = String(p.date || lead.createdDate || '');
-      if (pDate >= fromStr && pDate <= toStr) myFact += toNum(p.amount) * (toNum(lead.commissionPercent) / 100);
+      if (pDate >= fromStr && pDate <= toStr) myFact += toNum(p.amount) * factor(lead);
     });
 
     periodLeads.forEach(l => {
       if (isContract(l)) {
         contractCount++;
-        const total = toNum(l.price) * (toNum(l.commissionPercent) / 100);
+        const total = toNum(l.price) * factor(l);
         myFact += total / 2;
         contractThisMonth += total / 2;
         // друга половина «переходить на наступний місяць» лише якщо вона ще не потрапила в цей період
         const nextFirst = shiftMonth(l.month, 1) + '-01';
         if (nextFirst > toStr) contractNextMonth += total / 2;
       } else {
-        myPotential += leadRemaining(l) * (toNum(l.commissionPercent) / 100);
+        myPotential += leadRemaining(l) * factor(l);
       }
     });
 
     carryOverLeads.forEach(l => {
-      const total = toNum(l.price) * (toNum(l.commissionPercent) / 100);
+      const total = toNum(l.price) * factor(l);
       myFact += total / 2;
       carryOverAmount += total / 2;
     });
@@ -328,7 +379,7 @@ export function createCalc(data, now = new Date()) {
   }
 
   return {
-    realMonth, paymentsOf, actualPaidTotal, actualPaidInMonth, leadPaidTotal, leadRemaining,
+    realMonth, factor, usdPerEur, usdToEur, monthVolume, paymentsOf, actualPaidTotal, actualPaidInMonth, leadPaidTotal, leadRemaining,
     leadClientPotential, leadCommissionFact, leadCommissionPotential, leadStatusDisplay,
     allLeadsCountForMonth, confirmedInWorkCountForMonth, dashboard, monthRows, searchLeads, periodSummary
   };

@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=40">
+<link rel="stylesheet" href="style.css?v=47">
 </head>
 <body>
 
@@ -56,17 +56,28 @@
 
     <div class="ledger__figures" id="figures">
       <div class="figure-group">
-        <span class="figure-group__label">Цього місяця</span>
+        <span class="figure-group__label">Клієнти сплатили</span>
+        <div class="figure-group__row" style="grid-template-columns: 1fr;">
+          <div class="figure">
+            <span class="figure__label">Обʼєм місяця</span>
+            <span class="figure__value" id="figVolume">0 €</span>
+            <span class="figure__sub" id="figVolumeUAH">0 ₴</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="figure-group">
+        <span class="figure-group__label">Мій чистий заробіток за місяць</span>
         <div class="figure-group__row">
           <div class="figure figure--accent-green">
-            <span class="figure__label">Мій факт</span>
-            <span class="figure__value" id="figMyFact">0 €</span>
-            <span class="figure__sub" id="figMyFactUAH">0 ₴</span>
+            <span class="figure__label">Нові клієнти</span>
+            <span class="figure__value" id="figNewFact">0 €</span>
+            <span class="figure__sub" id="figNewFactUAH">0 ₴</span>
           </div>
-          <div class="figure figure--accent-amber">
-            <span class="figure__label" style="font-size: 8.5px; letter-spacing: -0.2px;">Очікую з боргів (міс/всі)</span>
-            <span class="figure__value" id="figMyPotential">0 € <span style="color:var(--text-dim)">/</span> 0 €</span>
-            <span class="figure__sub" id="figMyPotentialUAH">0 ₴ <span style="color:var(--text-dim)">/</span> 0 ₴</span>
+          <div class="figure figure--accent-blue">
+            <span class="figure__label">З минулих місяців (договори, доплати)</span>
+            <span class="figure__value" id="figCarryFact">0 €</span>
+            <span class="figure__sub" id="figCarryFactUAH">0 ₴</span>
           </div>
         </div>
       </div>
@@ -75,14 +86,14 @@
         <span class="figure-group__label">Підсумок місяця</span>
         <div class="figure-group__row">
           <div class="figure figure--cashflow">
-            <span class="figure__label">Сумарно (Факт + Борг)</span>
-            <span class="figure__value" id="figMyTotalMonth">0 €</span>
-            <span class="figure__sub" id="figMyTotalMonthUAH">0 ₴</span>
+            <span class="figure__label">Разом факт</span>
+            <span class="figure__value" id="figMyFact">0 €</span>
+            <span class="figure__sub" id="figMyFactUAH">0 ₴</span>
           </div>
-          <div class="figure figure--accent-blue">
-            <span class="figure__label">Прогноз</span>
-            <span class="figure__value" id="figForecast">0 €</span>
-            <span class="figure__sub" id="figForecastUAH">0 ₴</span>
+          <div class="figure figure--accent-amber">
+            <span class="figure__label">Очікую з боргів</span>
+            <span class="figure__value" id="figMyPotential">0 €</span>
+            <span class="figure__sub" id="figMyPotentialUAH">0 ₴</span>
           </div>
         </div>
       </div>
@@ -176,6 +187,11 @@
         <input type="number" id="sRate" step="0.001" min="0">
         <button class="btn btn--tiny btn--primary" id="btnSaveRate">Зберегти курс</button>
       </div>
+      <div class="misc-row">
+        <label for="sRateUsd">Курс € → $ (для «Агенції»)</label>
+        <input type="number" id="sRateUsd" step="0.0001" min="0">
+        <button class="btn btn--tiny btn--primary" id="btnSaveRateUsd">Зберегти курс $</button>
+      </div>
     </div>
 
     <div id="settingsGroups"></div>
@@ -206,7 +222,7 @@
         <label>Ціна тарифу</label>
         <div class="price-options" id="fPriceOptions"></div>
         <label class="checkbox-row"><input type="checkbox" id="fCustomPriceToggle"> інша сума</label>
-        <input type="number" id="fCustomPrice" placeholder="Своя сума, €" min="0" step="0.01" hidden>
+        <input type="number" id="fCustomPrice" placeholder="Своя сума (€; для Агенції — $)" min="0" step="0.01" hidden>
       </div>
       <div class="form-row form-row--split">
         <div>
@@ -218,7 +234,7 @@
             <option value="Оплачено повністю (договір)">Оплачено повністю (договір)</option>
           </select>
         </div>
-        <div><label>Сума першого платежу, €</label><input type="number" id="fFirstPayment" placeholder="0" value="0" min="0" step="0.01"></div>
+        <div><label>Сума першого платежу (€; Агенція — $)</label><input type="number" id="fFirstPayment" placeholder="0" value="0" min="0" step="0.01"></div>
       </div>
       <div class="form-row form-row--split">
         <div><label>Дата</label><input type="date" id="fDate"></div>
@@ -250,7 +266,7 @@
       <div class="lead-edit-grid">
         <div class="form-row"><label>Ім’я клієнта</label><input type="text" id="ldClientName" maxlength="120"></div>
         <div class="form-row"><label>Нік у Telegram</label><input type="text" id="ldNickname" maxlength="120"></div>
-        <div class="form-row"><label>Ціна тарифу, €</label><input type="number" id="ldPrice" min="0" step="0.01"></div>
+        <div class="form-row"><label id="ldPriceLabel">Ціна тарифу, €</label><input type="number" id="ldPrice" min="0" step="0.01"></div>
         <div class="form-row"><label>Комісія, %</label><input type="number" id="ldCommissionPercent" min="0" max="100" step="0.1"></div>
       </div>
       <div class="form-row">
@@ -296,7 +312,7 @@
     </div>
     <div class="modal__body">
       <div class="form-row form-row--split">
-        <div><label>Сума, €</label><input type="number" id="pAmount" placeholder="0" min="0" step="0.01"></div>
+        <div><label id="pAmountLabel">Сума, €</label><input type="number" id="pAmount" placeholder="0" min="0" step="0.01"></div>
         <div><label>Дата</label><input type="date" id="pDate"></div>
       </div>
       <div class="form-row">
@@ -370,71 +386,74 @@
     </div>
 
     <div class="modal__body">
-      <div style="display: flex; gap: 12px; margin-bottom: 20px; background: var(--surface-2); padding: 14px; border-radius: var(--radius-sm); border: 1px solid var(--rule);">
-         <div style="flex:1;">
-            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Очікую з боргів (цей місяць)</div>
-            <div class="mono" style="font-size: 16px; font-weight: 600; color: var(--gold);" id="mdWaitMonth">0 €</div>
-            <div class="mono" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="mdWaitMonthUAH">0 ₴</div>
-         </div>
-         <div style="flex:1; text-align:right;">
-            <div style="font-size: 10px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px;">Очікую сумарно (всі місяці)</div>
-            <div class="mono" style="font-size: 16px; font-weight: 600; color: var(--gold);" id="mdWaitAll">0 €</div>
-            <div class="mono" style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="mdWaitAllUAH">0 ₴</div>
-         </div>
-      </div>
-
       <div class="md-tabs">
         <button class="md-tab active" id="mdTabMonth">За обраний місяць</button>
         <button class="md-tab" id="mdTabAll">За весь час</button>
       </div>
 
       <div id="mdViewMonth">
-        <div class="lead-summary">
-          <div class="mini-fig">
-            <span>Сплачено клієнтами</span>
-            <b class="mono positive" id="mdClientPaidMonth_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientPaidMonth_UAH">0 ₴</span>
-          </div>
-          <div class="mini-fig">
-            <span>Борг клієнтів</span>
-            <b class="mono negative" id="mdClientDebtMonth_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientDebtMonth_UAH">0 ₴</span>
-          </div>
-          <div class="mini-fig">
-            <span>Мій факт</span>
-            <b class="mono positive" id="mdMyFactMonth_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyFactMonth_UAH">0 ₴</span>
-          </div>
-          <div class="mini-fig">
-            <span>Мої борги</span>
-            <b class="mono" style="color:var(--gold)" id="mdMyDebtMonth_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyDebtMonth_UAH">0 ₴</span>
-          </div>
+        <div class="st-hero">
+          <span class="st-hero__label" id="mdVolLabel">Оплатили клієнти</span>
+          <b class="mono" id="mdVolume_EUR">0 €</b>
+          <span class="st-hero__sub" id="mdVolume_SUB"></span>
+        </div>
+
+        <div class="st-card">
+          <div class="st-card__title">Мій чистий заробіток <small id="mdPctNote"></small></div>
+        <div class="st-row " id="mdNew">
+          <div class="st-row__name">Нові клієнти<small id="mdNew_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdNew_EUR">0 €</b><span class="mono" id="mdNew_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row " id="mdCarry">
+          <div class="st-row__name">З договорів минулого місяця<small id="mdCarry_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdCarry_EUR">0 €</b><span class="mono" id="mdCarry_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row " id="mdTopup">
+          <div class="st-row__name">Доплати з минулих місяців<small id="mdTopup_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdTopup_EUR">0 €</b><span class="mono" id="mdTopup_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row st-row--total" id="mdTotal">
+          <div class="st-row__name">Разом мій факт<small id="mdTotal_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdTotal_EUR">0 €</b><span class="mono" id="mdTotal_UAH">0 ₴</span></div>
+        </div>
+        </div>
+
+        <div class="st-card st-card--muted">
+          <div class="st-card__title">Ще очікую</div>
+        <div class="st-row " id="mdDebt">
+          <div class="st-row__name">З боргів клієнтів<small id="mdDebt_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdDebt_EUR">0 €</b><span class="mono" id="mdDebt_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row " id="mdNext">
+          <div class="st-row__name">З договорів цього місяця — у наступному<small id="mdNext_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdNext_EUR">0 €</b><span class="mono" id="mdNext_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row " id="mdForecast">
+          <div class="st-row__name">Прогноз за місяць<small id="mdForecast_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdForecast_EUR">0 €</b><span class="mono" id="mdForecast_UAH">0 ₴</span></div>
+        </div>
         </div>
       </div>
 
       <div id="mdViewAll" style="display:none;">
-        <div class="lead-summary">
-          <div class="mini-fig">
-            <span>Сплачено клієнтами</span>
-            <b class="mono positive" id="mdClientPaidAll_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientPaidAll_UAH">0 ₴</span>
-          </div>
-          <div class="mini-fig">
-            <span>Борг клієнтів</span>
-            <b class="mono negative" id="mdClientDebtAll_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdClientDebtAll_UAH">0 ₴</span>
-          </div>
-          <div class="mini-fig">
-            <span>Мій факт</span>
-            <b class="mono positive" id="mdMyFactAll_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyFactAll_UAH">0 ₴</span>
-          </div>
-          <div class="mini-fig">
-            <span>Мої борги</span>
-            <b class="mono" style="color:var(--gold)" id="mdMyDebtAll_EUR">0 €</b>
-            <span class="mono" style="font-size:10px; color:var(--text-muted); margin-top: 2px;" id="mdMyDebtAll_UAH">0 ₴</span>
-          </div>
+        <div class="st-card">
+          <div class="st-card__title">За весь час</div>
+        <div class="st-row " id="mdAllPaid">
+          <div class="st-row__name">Сплатили клієнти<small id="mdAllPaid_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdAllPaid_EUR">0 €</b><span class="mono" id="mdAllPaid_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row " id="mdAllDebt">
+          <div class="st-row__name">Борг клієнтів<small id="mdAllDebt_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdAllDebt_EUR">0 €</b><span class="mono" id="mdAllDebt_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row st-row--total" id="mdAllFact">
+          <div class="st-row__name">Мій факт<small id="mdAllFact_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdAllFact_EUR">0 €</b><span class="mono" id="mdAllFact_UAH">0 ₴</span></div>
+        </div>
+        <div class="st-row " id="mdAllMyDebt">
+          <div class="st-row__name">Мої борги (очікую)<small id="mdAllMyDebt_SUB"></small></div>
+          <div class="st-row__val"><b class="mono" id="mdAllMyDebt_EUR">0 €</b><span class="mono" id="mdAllMyDebt_UAH">0 ₴</span></div>
+        </div>
         </div>
       </div>
 
@@ -493,6 +512,6 @@
 </div>
 
 <script src="config.js"></script>
-<script type="module" src="app.js?v=43"></script>
+<script type="module" src="app.js?v=47"></script>
 </body>
 </html>

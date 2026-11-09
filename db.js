@@ -142,6 +142,12 @@ export async function saveRate(uahRate) {
   await batch.commit();
 }
 
+export async function saveUsdRate(usdPerEur) {
+  const batch = writeBatch(fs);
+  batch.set(doc(fs, 'meta', 'app'), { usdPerEur, updatedAt: serverTimestamp() }, { merge: true });
+  await batch.commit();
+}
+
 // ---- Імпорт (з Google Таблиці / з резервної копії) ----
 // Ідемпотентно: документи пишуться за тими ж id, повторний імпорт нічого не дублює.
 export async function importAll(data, rate) {
