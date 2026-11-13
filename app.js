@@ -165,6 +165,7 @@ function renderDashboard() {
   pair('figDebt', d.myPotentialMonth);
   pair('figNext', d.contractNextFact);
   pair('figMyPotential', d.myPotentialMonth + d.contractNextFact);
+  pair('figMonthOwed', d.myFact);
   pair('figOwed', d.expectedPayout);
   renderStatsFigures(d);
 }

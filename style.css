@@ -401,3 +401,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold); }
 .st2-note { text-align: left; }
 .fc-split { align-items: end; padding-bottom: 4px; }
 .fc-item { justify-content: flex-end; height: 100%; }
+
+/* v53: «До виплати мені» — за місяць + разом */
+.ledger__figures { grid-template-columns: 0.9fr 2.4fr 2fr 1.5fr; }
+.fc-split--2 { grid-template-columns: 1fr 1fr; }
+.figure-card--owed .fc-item--total .fc-item__big { color: var(--red); }
+.figure-card--owed .fc-item:not(.fc-item--total) .fc-item__big { color: var(--green); font-size: 17px; }
+@media (max-width: 1250px) { .ledger__figures { grid-template-columns: 1fr 1fr; } .figure-card--mine, .figure-card--wait { grid-column: span 2; } }
+@media (max-width: 700px) { .ledger__figures { grid-template-columns: 1fr; } .figure-card--mine, .figure-card--wait { grid-column: auto; } }

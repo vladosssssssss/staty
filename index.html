@@ -8,7 +8,7 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23d4a24e'/%3E%3Cpath d='M18 44V30h8v14h-8Zm10 0V20h8v24h-8Zm10 0V26h8v18h-8Z' fill='%230f1115'/%3E%3Cpath d='m17 25 11-7 9 4 10-8' fill='none' stroke='%230f1115' stroke-linecap='round' stroke-linejoin='round' stroke-width='4'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=52">
+<link rel="stylesheet" href="style.css?v=53">
 </head>
 <body>
 
@@ -81,9 +81,9 @@
       </div>
       <div class="figure-card figure-card--owed">
         <span class="figure-card__label">До виплати мені</span>
-        <div class="fc-body">
-          <b class="fc-item__big mono" id="figOwedUAH">0 ₴</b>
-          <span class="fc-item__small mono" id="figOwed">0 €</span>
+        <div class="fc-split fc-split--2">
+          <div class="fc-item"><span class="fc-item__label">Зароблено за місяць</span><b class="fc-item__big mono" id="figMonthOwedUAH">0 ₴</b><span class="fc-item__small mono" id="figMonthOwed">0 €</span></div>
+          <div class="fc-item fc-item--total"><span class="fc-item__label">Разом до виплати</span><b class="fc-item__big mono" id="figOwedUAH">0 ₴</b><span class="fc-item__small mono" id="figOwed">0 €</span></div>
         </div>
       </div>
     </div>
@@ -488,6 +488,6 @@
 </div>
 
 <script src="config.js"></script>
-<script type="module" src="app.js?v=52"></script>
+<script type="module" src="app.js?v=53"></script>
 </body>
 </html>
